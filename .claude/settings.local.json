@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter run:*)",
+      "Bash(flutter build:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(python3:*)",
+      "Bash(where python:*)",
+      "Bash(where python3:*)",
+      "Bash(where py:*)",
+      "Bash(node:*)",
+      "Bash(echo \"phase1 exit: $?\")",
+      "Bash(wc:*)",
+      "Bash(dart analyze:*)"
+    ]
+  }
+}
