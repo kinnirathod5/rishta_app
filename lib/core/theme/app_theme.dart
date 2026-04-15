@@ -1,15 +1,15 @@
+// lib/core/theme/app_theme.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../constants/app_colors.dart';
 
-class AppTheme {
+abstract class AppTheme {
   AppTheme._();
 
-  static ThemeData get lightTheme {
+  static ThemeData get light {
     return ThemeData(
       useMaterial3: true,
-
-      // ── COLOR SCHEME ──────────────────────────────
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.crimson,
         primary: AppColors.crimson,
@@ -19,11 +19,11 @@ class AppTheme {
         surface: AppColors.white,
         onSurface: AppColors.ink,
         error: AppColors.error,
+        onError: Colors.white,
       ),
-
       scaffoldBackgroundColor: AppColors.ivory,
 
-      // ── APPBAR ────────────────────────────────────
+      // ── APP BAR ────────────────────────────────────
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.crimson,
         foregroundColor: Colors.white,
@@ -42,7 +42,7 @@ class AppTheme {
         iconTheme: IconThemeData(color: Colors.white),
       ),
 
-      // ── ELEVATED BUTTON ───────────────────────────
+      // ── ELEVATED BUTTON ────────────────────────────
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.crimson,
@@ -57,16 +57,17 @@ class AppTheme {
           textStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
+            letterSpacing: 0.2,
           ),
         ),
       ),
 
-      // ── OUTLINED BUTTON ───────────────────────────
+      // ── OUTLINED BUTTON ────────────────────────────
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.crimson,
-          side: const BorderSide(color: AppColors.crimson, width: 1.5),
+          side: const BorderSide(
+              color: AppColors.border, width: 1.5),
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -78,7 +79,7 @@ class AppTheme {
         ),
       ),
 
-      // ── TEXT BUTTON ───────────────────────────────
+      // ── TEXT BUTTON ────────────────────────────────
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.crimson,
@@ -89,53 +90,46 @@ class AppTheme {
         ),
       ),
 
-      // ── INPUT DECORATION ──────────────────────────
+      // ── INPUT DECORATION ───────────────────────────
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.white,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
+            horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide:
+          const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide:
+          const BorderSide(color: AppColors.border, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(
-            color: AppColors.crimson,
-            width: 2,
-          ),
+              color: AppColors.crimson, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.error),
+          borderSide:
+          const BorderSide(color: AppColors.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.error, width: 2),
+          borderSide: const BorderSide(
+              color: AppColors.error, width: 2),
         ),
         labelStyle: const TextStyle(
-          color: AppColors.muted,
-          fontSize: 14,
-        ),
+            color: AppColors.muted, fontSize: 14),
         hintStyle: const TextStyle(
-          color: AppColors.disabled,
-          fontSize: 14,
-        ),
+            color: AppColors.disabled, fontSize: 14),
         errorStyle: const TextStyle(
-          color: AppColors.error,
-          fontSize: 12,
-        ),
+            color: AppColors.error, fontSize: 12),
       ),
 
-      // ── CARD ──────────────────────────────────────
-      // Fix: CardThemeData use karo (Flutter 3.x)
+      // ── CARD ───────────────────────────────────────
       cardTheme: CardThemeData(
         color: AppColors.white,
         elevation: 0,
@@ -146,65 +140,57 @@ class AppTheme {
         margin: EdgeInsets.zero,
       ),
 
-      // ── CHIP ──────────────────────────────────────
+      // ── CHIP ───────────────────────────────────────
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.ivoryDark,
         labelStyle: const TextStyle(
-          color: AppColors.inkSoft,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
+            color: AppColors.inkSoft,
+            fontSize: 12,
+            fontWeight: FontWeight.w500),
         side: const BorderSide(color: AppColors.border),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(100),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 10, vertical: 4),
       ),
 
-      // ── BOTTOM NAVIGATION BAR ─────────────────────
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      // ── BOTTOM NAVIGATION ──────────────────────────
+      bottomNavigationBarTheme:
+      const BottomNavigationBarThemeData(
         backgroundColor: AppColors.white,
         selectedItemColor: AppColors.crimson,
         unselectedItemColor: AppColors.muted,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
         selectedLabelStyle: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
+            fontSize: 11, fontWeight: FontWeight.w600),
         unselectedLabelStyle: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w400,
-        ),
+            fontSize: 11, fontWeight: FontWeight.w400),
       ),
 
-      // ── DIVIDER ───────────────────────────────────
+      // ── DIVIDER ────────────────────────────────────
       dividerTheme: const DividerThemeData(
         color: AppColors.border,
         thickness: 1,
         space: 1,
       ),
 
-      // ── SNACK BAR ─────────────────────────────────
+      // ── SNACK BAR ──────────────────────────────────
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.ink,
         contentTextStyle: const TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-        ),
+            color: Colors.white, fontSize: 14),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+            borderRadius: BorderRadius.circular(10)),
         behavior: SnackBarBehavior.floating,
       ),
 
-      // ── DIALOG ────────────────────────────────────
-      // Fix: DialogThemeData use karo (Flutter 3.x)
+      // ── DIALOG ─────────────────────────────────────
       dialogTheme: DialogThemeData(
         backgroundColor: AppColors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+            borderRadius: BorderRadius.circular(16)),
         titleTextStyle: const TextStyle(
           color: AppColors.ink,
           fontSize: 18,
@@ -217,7 +203,33 @@ class AppTheme {
         ),
       ),
 
-      // ── TEXT THEME ────────────────────────────────
+      // ── SWITCH ─────────────────────────────────────
+      switchTheme: SwitchThemeData(
+        thumbColor:
+        WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return Colors.white;
+          }
+          return AppColors.muted;
+        }),
+        trackColor:
+        WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.crimson;
+          }
+          return AppColors.border;
+        }),
+      ),
+
+      // ── SLIDER ─────────────────────────────────────
+      sliderTheme: const SliderThemeData(
+        activeTrackColor: AppColors.crimson,
+        inactiveTrackColor: AppColors.ivoryDark,
+        thumbColor: AppColors.crimson,
+        overlayColor: Color(0x1F8B1A1A),
+      ),
+
+      // ── TEXT THEME ─────────────────────────────────
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
           fontSize: 32,

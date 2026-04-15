@@ -1,334 +1,398 @@
+// lib/presentation/auth/welcome_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:rishta_app/core/constants/app_colors.dart';
+import 'package:rishta_app/core/constants/app_strings.dart';
+import 'package:rishta_app/core/constants/app_text_styles.dart';
+import 'package:rishta_app/core/widgets/custom_button.dart';
 
-import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_routes.dart';
-import '../../core/constants/app_strings.dart';
+// ─────────────────────────────────────────────────────────
+// SLIDE DATA MODEL
+// ─────────────────────────────────────────────────────────
 
-// ── MODEL ──────────────────────────────────────────────────
-class OnboardingSlide {
-  const OnboardingSlide({
-    required this.emoji,
-    required this.title,
-    required this.subtitle,
-    required this.bgColor,
-    required this.borderColor,
-  });
-
+class _Slide {
   final String emoji;
   final String title;
   final String subtitle;
-  final Color bgColor;
-  final Color borderColor;
+  final Color accentColor;
+
+  const _Slide({
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+    required this.accentColor,
+  });
 }
 
-// ── SCREEN ─────────────────────────────────────────────────
+const List<_Slide> _slides = [
+  _Slide(
+    emoji: '💍',
+    title: AppStrings.slide1Title,
+    subtitle: AppStrings.slide1Sub,
+    accentColor: AppColors.crimson,
+  ),
+  _Slide(
+    emoji: '🛕',
+    title: AppStrings.slide2Title,
+    subtitle: AppStrings.slide2Sub,
+    accentColor: AppColors.gold,
+  ),
+  _Slide(
+    emoji: '🔐',
+    title: AppStrings.slide3Title,
+    subtitle: AppStrings.slide3Sub,
+    accentColor: AppColors.success,
+  ),
+];
+
+// ─────────────────────────────────────────────────────────
+// SCREEN
+// ─────────────────────────────────────────────────────────
+
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
   @override
-  State<WelcomeScreen> createState() => _WelcomeScreenState();
+  State<WelcomeScreen> createState() =>
+      _WelcomeScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen> {
-  final PageController _pageController = PageController();
+class _WelcomeScreenState
+    extends State<WelcomeScreen>
+    with TickerProviderStateMixin {
+
+  final _pageCtrl = PageController();
   int _currentPage = 0;
 
-  final List<OnboardingSlide> _slides = const [
-    OnboardingSlide(
-      emoji: '💑',
-      title: AppStrings.slide1Title,
-      subtitle: AppStrings.slide1Subtitle,
-      bgColor: AppColors.crimsonSurface,
-      borderColor: Color(0xFFFAD4D4),
-    ),
-    OnboardingSlide(
-      emoji: '🛕',
-      title: AppStrings.slide2Title,
-      subtitle: AppStrings.slide2Subtitle,
-      bgColor: AppColors.goldSurface,
-      borderColor: Color(0xFFEEDFBB),
-    ),
-    OnboardingSlide(
-      emoji: '🛡️',
-      title: AppStrings.slide3Title,
-      subtitle: AppStrings.slide3Subtitle,
-      bgColor: AppColors.successSurface,
-      borderColor: Color(0xFFBBDFCC),
-    ),
-  ];
+  // Entry animation
+  late AnimationController _entryCtrl;
+  late Animation<double> _entryFade;
+  late Animation<Offset> _entrySlide;
+
+  // Page content animation
+  late AnimationController _pageCtrl2;
+  late Animation<double> _contentFade;
+  late Animation<Offset> _contentSlide;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupAnimations();
+    _entryCtrl.forward();
+  }
+
+  void _setupAnimations() {
+    // Entry fade+slide (screen loads)
+    _entryCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _entryFade = CurvedAnimation(
+      parent: _entryCtrl,
+      curve: Curves.easeOut,
+    );
+    _entrySlide = Tween<Offset>(
+      begin: const Offset(0, 0.05),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entryCtrl,
+      curve: Curves.easeOut,
+    ));
+
+    // Page content animation
+    _pageCtrl2 = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _contentFade = CurvedAnimation(
+      parent: _pageCtrl2,
+      curve: Curves.easeOut,
+    );
+    _contentSlide = Tween<Offset>(
+      begin: const Offset(0.05, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _pageCtrl2,
+      curve: Curves.easeOut,
+    ));
+    _pageCtrl2.forward();
+  }
+
+  void _onPageChanged(int page) {
+    setState(() => _currentPage = page);
+    _pageCtrl2.reset();
+    _pageCtrl2.forward();
+  }
+
+  void _nextPage() {
+    if (_currentPage < _slides.length - 1) {
+      _pageCtrl.nextPage(
+        duration:
+        const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    } else {
+      context.go('/phone');
+    }
+  }
+
+  void _skipToLogin() {
+    context.go('/phone');
+  }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _pageCtrl.dispose();
+    _entryCtrl.dispose();
+    _pageCtrl2.dispose();
     super.dispose();
   }
-
-  void _goToPhone() => context.go(AppRoutePaths.phone);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(),
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                physics: const BouncingScrollPhysics(),
-                itemCount: _slides.length,
-                onPageChanged: (page) => setState(() => _currentPage = page),
-                itemBuilder: (context, index) => _buildSlide(_slides[index]),
-              ),
+      backgroundColor: AppColors.ivory,
+      body: FadeTransition(
+        opacity: _entryFade,
+        child: SlideTransition(
+          position: _entrySlide,
+          child: SafeArea(
+            child: Column(
+              children: [
+                _buildTopBar(),
+                Expanded(child: _buildSlider()),
+                _buildDots(),
+                const SizedBox(height: 28),
+                _buildButtons(),
+                const SizedBox(height: 24),
+              ],
             ),
-            _buildBottomSection(),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  // ── TOP BAR ──────────────────────────────────────────────
+  // ── TOP BAR ───────────────────────────────────────────
+
   Widget _buildTopBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.fromLTRB(
+          20, 16, 20, 0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment:
+        MainAxisAlignment.spaceBetween,
         children: [
-          // App logo
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
+          // Logo row
+          Row(children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                gradient: AppColors.crimsonGradient,
+                borderRadius:
+                BorderRadius.circular(10),
+              ),
+              child: const Center(
+                child: Text('💍',
+                    style:
+                    TextStyle(fontSize: 18)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              AppStrings.appName,
+              style: AppTextStyles.h5.copyWith(
+                  color: AppColors.crimson),
+            ),
+          ]),
+          // Skip button
+          if (_currentPage < _slides.length - 1)
+            GestureDetector(
+              onTap: _skipToLogin,
+              child: Container(
+                padding:
+                const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 7),
                 decoration: BoxDecoration(
-                  color: AppColors.crimson,
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.ivoryDark,
+                  borderRadius:
+                  BorderRadius.circular(100),
+                  border: Border.all(
+                      color: AppColors.border),
                 ),
-                child: const Center(
-                  child: Text('💍', style: TextStyle(fontSize: 16)),
+                child: Text(
+                  AppStrings.skip,
+                  style: AppTextStyles.labelMedium
+                      .copyWith(
+                      color: AppColors.muted),
                 ),
               ),
-              const SizedBox(width: 8),
-              const Text(
-                AppStrings.appName,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
-                ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── SLIDER ────────────────────────────────────────────
+
+  Widget _buildSlider() {
+    return PageView.builder(
+      controller: _pageCtrl,
+      onPageChanged: _onPageChanged,
+      itemCount: _slides.length,
+      itemBuilder: (_, i) =>
+          _buildSlide(_slides[i]),
+    );
+  }
+
+  Widget _buildSlide(_Slide slide) {
+    return FadeTransition(
+      opacity: _contentFade,
+      child: SlideTransition(
+        position: _contentSlide,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: 32),
+          child: Column(
+            mainAxisAlignment:
+            MainAxisAlignment.center,
+            children: [
+              // Illustration
+              _buildIllustration(slide),
+              const SizedBox(height: 40),
+              // Title
+              Text(
+                slide.title,
+                style: AppTextStyles.onboardTitle,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 14),
+              // Subtitle
+              Text(
+                slide.subtitle,
+                style:
+                AppTextStyles.onboardSubtitle,
+                textAlign: TextAlign.center,
               ),
             ],
           ),
-          // Skip button — hidden on last slide
-          AnimatedOpacity(
-            opacity: _currentPage < 2 ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 200),
-            child: IgnorePointer(
-              ignoring: _currentPage >= 2,
-              child: TextButton(
-                onPressed: _goToPhone,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.muted,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text(
-                  AppStrings.btnSkip,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  // ── SLIDE ─────────────────────────────────────────────────
-  Widget _buildSlide(OnboardingSlide slide) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Illustration container
-          Container(
-            width: double.infinity,
-            height: 280,
-            decoration: BoxDecoration(
-              color: slide.bgColor,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: slide.borderColor, width: 1),
+  Widget _buildIllustration(_Slide slide) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Outer glow ring
+        Container(
+          width: 200,
+          height: 200,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: slide.accentColor
+                .withOpacity(0.06),
+          ),
+        ),
+        // Inner ring
+        Container(
+          width: 160,
+          height: 160,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: slide.accentColor
+                .withOpacity(0.1),
+          ),
+        ),
+        // Emoji container
+        Container(
+          width: 120,
+          height: 120,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [
+                slide.accentColor
+                    .withOpacity(0.15),
+                slide.accentColor
+                    .withOpacity(0.05),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: Center(
-              child: Text(
-                slide.emoji,
-                style: const TextStyle(fontSize: 100),
-              ),
+            border: Border.all(
+              color: slide.accentColor
+                  .withOpacity(0.25),
+              width: 2,
             ),
           ),
-          const SizedBox(height: 44),
-          // Title
-          Text(
-            slide.title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
-              height: 1.2,
+          child: Center(
+            child: Text(
+              slide.emoji,
+              style: const TextStyle(
+                  fontSize: 56),
             ),
           ),
-          const SizedBox(height: 14),
-          // Subtitle
-          Text(
-            slide.subtitle,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              color: AppColors.muted,
-              height: 1.65,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  // ── BOTTOM SECTION ────────────────────────────────────────
-  Widget _buildBottomSection() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 36),
-      child: Column(
-        children: [
-          // Page indicator dots
-          SmoothPageIndicator(
-            controller: _pageController,
-            count: _slides.length,
-            effect: const ExpandingDotsEffect(
-              activeDotColor: AppColors.crimson,
-              dotColor: AppColors.ivoryDark,
-              dotHeight: 8,
-              dotWidth: 8,
-              expansionFactor: 3.5,
-              spacing: 6,
-            ),
-          ),
-          const SizedBox(height: 28),
-          // Next / Get Started button
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: _currentPage == 2
-                ? _buildGetStartedButton()
-                : _buildNextButton(),
-          ),
-          const SizedBox(height: 16),
-          // Login row — visible only on last slide
-          AnimatedOpacity(
-            opacity: _currentPage == 2 ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 300),
-            child: IgnorePointer(
-              ignoring: _currentPage != 2,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    AppStrings.phoneAlreadyAccount,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _goToPhone,
-                    child: const Text(
-                      AppStrings.phoneLoginLink,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.crimson,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // ── DOTS ──────────────────────────────────────────────
 
-  // ── NEXT BUTTON ───────────────────────────────────────────
-  Widget _buildNextButton() {
-    return SizedBox(
-      key: const ValueKey('next'),
-      width: double.infinity,
-      height: 52,
-      child: ElevatedButton(
-        onPressed: () => _pageController.nextPage(
-          duration: const Duration(milliseconds: 350),
+  Widget _buildDots() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(
+        _slides.length,
+            (i) => AnimatedContainer(
+          duration:
+          const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.crimson,
-          foregroundColor: AppColors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+          margin: const EdgeInsets.symmetric(
+              horizontal: 4),
+          width: i == _currentPage ? 24 : 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: i == _currentPage
+                ? AppColors.crimson
+                : AppColors.border,
+            borderRadius: BorderRadius.circular(4),
           ),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              AppStrings.btnNext,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.white,
-              ),
-            ),
-            SizedBox(width: 8),
-            Icon(Icons.arrow_forward_rounded, size: 20, color: AppColors.white),
-          ],
         ),
       ),
     );
   }
 
-  // ── GET STARTED BUTTON ────────────────────────────────────
-  Widget _buildGetStartedButton() {
-    return SizedBox(
-      key: const ValueKey('getStarted'),
-      width: double.infinity,
-      height: 52,
-      child: ElevatedButton(
-        onPressed: _goToPhone,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.crimson,
-          foregroundColor: AppColors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+  // ── BUTTONS ───────────────────────────────────────────
+
+  Widget _buildButtons() {
+    final isLast =
+        _currentPage == _slides.length - 1;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 24),
+      child: Column(
+        children: [
+          // Primary CTA
+          PrimaryButton(
+            label: isLast
+                ? AppStrings.getStarted
+                : AppStrings.next,
+            icon: isLast
+                ? null
+                : Icons.arrow_forward_rounded,
+            onPressed: _nextPage,
           ),
-        ),
-        child: const Text(
-          AppStrings.btnGetStarted,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.white,
-          ),
-        ),
+
+        ],
       ),
     );
   }
+
 }

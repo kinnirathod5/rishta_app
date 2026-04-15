@@ -1,13 +1,15 @@
 // lib/providers/app_state_provider.dart
-// Global app state — theme, language, connectivity, notifications
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../data/models/notification_model.dart';
-import '../data/repositories/notification_repository.dart';
-import 'auth_provider.dart';
+import 'package:rishta_app/data/models/notification_model.dart';
+import 'package:rishta_app/data/repositories/notification_repository.dart';
+import 'package:rishta_app/providers/auth_provider.dart';
 
-// ── NOTIFICATION REPOSITORY PROVIDER ─────────────────────
+// ─────────────────────────────────────────────────────────
+// REPOSITORY PROVIDER
+// ─────────────────────────────────────────────────────────
+
 final notificationRepositoryProvider =
 Provider<NotificationRepository>(
       (ref) => NotificationRepository(),
@@ -18,127 +20,89 @@ Provider<NotificationRepository>(
 // ─────────────────────────────────────────────────────────
 
 class AppSettings {
-  final bool isDarkMode;
-  final String language; // 'hindi' | 'english'
+  final ThemeMode themeMode;
+  final String language;
   final bool notificationsEnabled;
   final bool soundEnabled;
   final bool vibrationEnabled;
-  final bool showOnlineStatus;
-  final bool autoPlayVideos;
+  final bool biometricEnabled;
 
   const AppSettings({
-    this.isDarkMode = false,
-    this.language = 'hindi',
+    this.themeMode = ThemeMode.light,
+    this.language = 'en',
     this.notificationsEnabled = true,
     this.soundEnabled = true,
     this.vibrationEnabled = true,
-    this.showOnlineStatus = true,
-    this.autoPlayVideos = false,
+    this.biometricEnabled = false,
   });
 
   AppSettings copyWith({
-    bool? isDarkMode,
+    ThemeMode? themeMode,
     String? language,
     bool? notificationsEnabled,
     bool? soundEnabled,
     bool? vibrationEnabled,
-    bool? showOnlineStatus,
-    bool? autoPlayVideos,
+    bool? biometricEnabled,
   }) {
     return AppSettings(
-      isDarkMode: isDarkMode ?? this.isDarkMode,
+      themeMode: themeMode ?? this.themeMode,
       language: language ?? this.language,
       notificationsEnabled:
-      notificationsEnabled ?? this.notificationsEnabled,
-      soundEnabled: soundEnabled ?? this.soundEnabled,
+      notificationsEnabled ??
+          this.notificationsEnabled,
+      soundEnabled:
+      soundEnabled ?? this.soundEnabled,
       vibrationEnabled:
       vibrationEnabled ?? this.vibrationEnabled,
-      showOnlineStatus:
-      showOnlineStatus ?? this.showOnlineStatus,
-      autoPlayVideos:
-      autoPlayVideos ?? this.autoPlayVideos,
+      biometricEnabled:
+      biometricEnabled ?? this.biometricEnabled,
     );
   }
+
+  bool get isDarkMode =>
+      themeMode == ThemeMode.dark;
 }
 
-// ── APP SETTINGS NOTIFIER ─────────────────────────────────
-class AppSettingsNotifier extends StateNotifier<AppSettings> {
-  AppSettingsNotifier() : super(const AppSettings()) {
-    _loadFromStorage();
+// ─────────────────────────────────────────────────────────
+// APP SETTINGS NOTIFIER
+// ─────────────────────────────────────────────────────────
+
+class AppSettingsNotifier
+    extends StateNotifier<AppSettings> {
+  AppSettingsNotifier()
+      : super(const AppSettings());
+
+  void setThemeMode(ThemeMode mode) =>
+      state = state.copyWith(themeMode: mode);
+
+  void toggleTheme() {
+    final next = state.isDarkMode
+        ? ThemeMode.light
+        : ThemeMode.dark;
+    state = state.copyWith(themeMode: next);
   }
 
-  Future<void> _loadFromStorage() async {
-    // TODO: SharedPreferences se load karo
-    // final prefs = await SharedPreferences.getInstance();
-    // state = AppSettings(
-    //   isDarkMode: prefs.getBool('isDarkMode') ?? false,
-    //   language: prefs.getString('language') ?? 'hindi',
-    //   notificationsEnabled:
-    //     prefs.getBool('notificationsEnabled') ?? true,
-    //   soundEnabled: prefs.getBool('soundEnabled') ?? true,
-    //   vibrationEnabled:
-    //     prefs.getBool('vibrationEnabled') ?? true,
-    //   showOnlineStatus:
-    //     prefs.getBool('showOnlineStatus') ?? true,
-    // );
-  }
+  void setLanguage(String lang) =>
+      state = state.copyWith(language: lang);
 
-  Future<void> _saveToStorage() async {
-    // TODO: SharedPreferences mein save karo
-    // final prefs = await SharedPreferences.getInstance();
-    // prefs.setBool('isDarkMode', state.isDarkMode);
-    // prefs.setString('language', state.language);
-    // prefs.setBool('notificationsEnabled',
-    //   state.notificationsEnabled);
-    // prefs.setBool('soundEnabled', state.soundEnabled);
-    // prefs.setBool('vibrationEnabled',
-    //   state.vibrationEnabled);
-    // prefs.setBool('showOnlineStatus',
-    //   state.showOnlineStatus);
-  }
+  void setNotifications(bool enabled) =>
+      state = state.copyWith(
+          notificationsEnabled: enabled);
 
-  void toggleDarkMode() {
-    state = state.copyWith(isDarkMode: !state.isDarkMode);
-    _saveToStorage();
-  }
+  void setSound(bool enabled) =>
+      state = state.copyWith(soundEnabled: enabled);
 
-  void setLanguage(String language) {
-    state = state.copyWith(language: language);
-    _saveToStorage();
-  }
+  void setVibration(bool enabled) =>
+      state = state.copyWith(
+          vibrationEnabled: enabled);
 
-  void toggleNotifications() {
-    state = state.copyWith(
-        notificationsEnabled: !state.notificationsEnabled);
-    _saveToStorage();
-  }
-
-  void toggleSound() {
-    state = state.copyWith(soundEnabled: !state.soundEnabled);
-    _saveToStorage();
-  }
-
-  void toggleVibration() {
-    state = state.copyWith(
-        vibrationEnabled: !state.vibrationEnabled);
-    _saveToStorage();
-  }
-
-  void toggleOnlineStatus() {
-    state = state.copyWith(
-        showOnlineStatus: !state.showOnlineStatus);
-    _saveToStorage();
-  }
-
-  void reset() {
-    state = const AppSettings();
-    _saveToStorage();
-  }
+  void setBiometric(bool enabled) =>
+      state = state.copyWith(
+          biometricEnabled: enabled);
 }
 
-// ── APP SETTINGS PROVIDER ─────────────────────────────────
-final appSettingsProvider =
-StateNotifierProvider<AppSettingsNotifier, AppSettings>(
+final appSettingsProvider = StateNotifierProvider<
+    AppSettingsNotifier, AppSettings>(
       (ref) => AppSettingsNotifier(),
 );
 
@@ -146,89 +110,83 @@ StateNotifierProvider<AppSettingsNotifier, AppSettings>(
 // CONNECTIVITY STATE
 // ─────────────────────────────────────────────────────────
 
-enum ConnectivityStatus { online, offline, unknown }
-
 class ConnectivityState {
-  final ConnectivityStatus status;
-  final bool wasOffline; // offline tha aur wapas online aaya
+  final bool isConnected;
+  final bool isWifi;
+  final bool isMobile;
 
   const ConnectivityState({
-    this.status = ConnectivityStatus.unknown,
-    this.wasOffline = false,
+    this.isConnected = true,
+    this.isWifi = true,
+    this.isMobile = false,
   });
 
   ConnectivityState copyWith({
-    ConnectivityStatus? status,
-    bool? wasOffline,
+    bool? isConnected,
+    bool? isWifi,
+    bool? isMobile,
   }) {
     return ConnectivityState(
-      status: status ?? this.status,
-      wasOffline: wasOffline ?? this.wasOffline,
+      isConnected: isConnected ?? this.isConnected,
+      isWifi: isWifi ?? this.isWifi,
+      isMobile: isMobile ?? this.isMobile,
     );
   }
 
-  bool get isOnline =>
-      status == ConnectivityStatus.online;
-  bool get isOffline =>
-      status == ConnectivityStatus.offline;
+  String get statusLabel {
+    if (!isConnected) return 'No Internet';
+    if (isWifi) return 'WiFi';
+    if (isMobile) return 'Mobile Data';
+    return 'Connected';
+  }
 }
 
-// ── CONNECTIVITY NOTIFIER ─────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// CONNECTIVITY NOTIFIER
+// ─────────────────────────────────────────────────────────
+
 class ConnectivityNotifier
     extends StateNotifier<ConnectivityState> {
   ConnectivityNotifier()
-      : super(const ConnectivityState(
-      status: ConnectivityStatus.online)) {
-    _initConnectivity();
-  }
+      : super(const ConnectivityState());
 
-  Future<void> _initConnectivity() async {
-    // TODO: connectivity_plus package use karo
-    // final connectivity = Connectivity();
-    // final result = await connectivity.checkConnectivity();
-    // _updateStatus(result);
-    //
-    // connectivity.onConnectivityChanged.listen((result) {
-    //   _updateStatus(result);
-    // });
+  // Phase 3: connectivity_plus package use karo
+  // void _init() {
+  //   Connectivity().onConnectivityChanged
+  //       .listen(_handleChange);
+  // }
 
-    // Mock: online status
-    state = const ConnectivityState(
-        status: ConnectivityStatus.online);
-  }
-
-  void _updateStatus(dynamic result) {
-    // TODO: ConnectivityResult se status update karo
-    // final isOnline = result != ConnectivityResult.none;
-    // final wasOffline = state.isOffline;
-    //
-    // state = state.copyWith(
-    //   status: isOnline
-    //     ? ConnectivityStatus.online
-    //     : ConnectivityStatus.offline,
-    //   wasOffline: !isOnline ? false : wasOffline,
-    // );
-  }
-
-  void setOnline() {
+  void setConnected(bool connected) {
     state = state.copyWith(
-      status: ConnectivityStatus.online,
-      wasOffline: state.isOffline,
+        isConnected: connected);
+  }
+
+  void setWifi(bool wifi) {
+    state = state.copyWith(
+      isConnected: true,
+      isWifi: wifi,
+      isMobile: !wifi,
     );
   }
 
-  void setOffline() {
+  void setDisconnected() {
     state = state.copyWith(
-      status: ConnectivityStatus.offline,
+      isConnected: false,
+      isWifi: false,
+      isMobile: false,
     );
   }
 }
 
-// ── CONNECTIVITY PROVIDER ─────────────────────────────────
 final connectivityProvider = StateNotifierProvider<
     ConnectivityNotifier, ConnectivityState>(
       (ref) => ConnectivityNotifier(),
 );
+
+// Simple bool provider
+final isConnectedProvider = Provider<bool>((ref) {
+  return ref.watch(connectivityProvider).isConnected;
+});
 
 // ─────────────────────────────────────────────────────────
 // NOTIFICATIONS STATE
@@ -238,52 +196,56 @@ class NotificationsState {
   final List<NotificationModel> notifications;
   final bool isLoading;
   final String? error;
+  final int unreadCount;
 
   const NotificationsState({
     this.notifications = const [],
     this.isLoading = false,
     this.error,
+    this.unreadCount = 0,
   });
 
   NotificationsState copyWith({
     List<NotificationModel>? notifications,
     bool? isLoading,
     String? error,
+    int? unreadCount,
   }) {
     return NotificationsState(
-      notifications: notifications ?? this.notifications,
+      notifications:
+      notifications ?? this.notifications,
       isLoading: isLoading ?? this.isLoading,
       error: error,
+      unreadCount: unreadCount ?? this.unreadCount,
     );
   }
 
-  // ── COMPUTED ──────────────────────────────────────
-  int get unreadCount =>
-      notifications.where((n) => !n.isRead).length;
+  // ── COMPUTED ────────────────────────────────────────
 
   bool get hasUnread => unreadCount > 0;
 
-  List<NotificationModel> get todayNotifications {
-    return notifications
-        .where((n) => n.dateGroup == 'Aaj')
-        .toList();
+  bool get isEmpty => notifications.isEmpty;
+
+  /// Grouped by dateGroup
+  Map<String, List<NotificationModel>>
+  get grouped {
+    final map =
+    <String, List<NotificationModel>>{};
+    for (final n in notifications) {
+      map[n.dateGroup] ??= [];
+      map[n.dateGroup]!.add(n);
+    }
+    return map;
   }
 
-  List<NotificationModel> get yesterdayNotifications {
-    return notifications
-        .where((n) => n.dateGroup == 'Kal')
-        .toList();
-  }
-
-  List<NotificationModel> get olderNotifications {
-    return notifications
-        .where((n) =>
-    n.dateGroup != 'Aaj' && n.dateGroup != 'Kal')
-        .toList();
-  }
+  List<NotificationModel> get unread =>
+      notifications.where((n) => n.isUnread).toList();
 }
 
-// ── NOTIFICATIONS NOTIFIER ────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// NOTIFICATIONS NOTIFIER
+// ─────────────────────────────────────────────────────────
+
 class NotificationsNotifier
     extends StateNotifier<NotificationsState> {
   final NotificationRepository _repo;
@@ -291,19 +253,27 @@ class NotificationsNotifier
 
   NotificationsNotifier(this._repo, this._userId)
       : super(const NotificationsState()) {
-    if (_userId != null) loadNotifications();
+    if (_userId != null) _load();
   }
 
-  Future<void> loadNotifications() async {
+  Future<void> _load() async {
     if (_userId == null) return;
-    state = state.copyWith(isLoading: true, error: null);
+
+    state = state.copyWith(
+        isLoading: true, error: null);
 
     try {
       final notifications =
-      await _repo.getUserNotifications(_userId!);
+      await _repo.getNotifications(
+          userId: _userId!);
+      final unread =
+      await _repo.getUnreadCount(_userId!);
+
       state = state.copyWith(
         notifications: notifications,
+        unreadCount: unread,
         isLoading: false,
+        error: null,
       );
     } catch (e) {
       state = state.copyWith(
@@ -313,111 +283,128 @@ class NotificationsNotifier
     }
   }
 
-  Future<void> markAsRead(String notificationId) async {
-    await _repo.markAsRead(notificationId);
-    state = state.copyWith(
-      notifications: state.notifications.map((n) {
-        if (n.id == notificationId) {
-          return n.copyWith(isRead: true);
-        }
-        return n;
-      }).toList(),
-    );
+  Future<void> markAsRead(
+      String notificationId) async {
+    if (_userId == null) return;
+
+    try {
+      await _repo.markAsRead(
+        userId: _userId!,
+        notificationId: notificationId,
+      );
+
+      final updated = state.notifications
+          .map((n) => n.id == notificationId
+          ? n.markRead()
+          : n)
+          .toList();
+
+      state = state.copyWith(
+        notifications: updated,
+        unreadCount:
+        (state.unreadCount - 1).clamp(0, 999),
+      );
+    } catch (_) {}
   }
 
   Future<void> markAllAsRead() async {
     if (_userId == null) return;
-    await _repo.markAllAsRead(_userId!);
-    state = state.copyWith(
-      notifications: state.notifications
-          .map((n) => n.copyWith(isRead: true))
-          .toList(),
-    );
+
+    try {
+      await _repo.markAllAsRead(_userId!);
+
+      final updated = state.notifications
+          .map((n) => n.isUnread ? n.markRead() : n)
+          .toList();
+
+      state = state.copyWith(
+        notifications: updated,
+        unreadCount: 0,
+      );
+    } catch (_) {}
   }
 
   Future<void> deleteNotification(
       String notificationId) async {
-    await _repo.deleteNotification(notificationId);
-    state = state.copyWith(
-      notifications: state.notifications
+    if (_userId == null) return;
+
+    try {
+      await _repo.deleteNotification(
+        userId: _userId!,
+        notificationId: notificationId,
+      );
+
+      final updated = state.notifications
           .where((n) => n.id != notificationId)
-          .toList(),
-    );
+          .toList();
+
+      final wasUnread = state.notifications
+          .any((n) =>
+      n.id == notificationId && n.isUnread);
+
+      state = state.copyWith(
+        notifications: updated,
+        unreadCount: wasUnread
+            ? (state.unreadCount - 1).clamp(0, 999)
+            : state.unreadCount,
+      );
+    } catch (_) {}
   }
 
   Future<void> clearAll() async {
     if (_userId == null) return;
-    await _repo.clearAll(_userId!);
-    state = state.copyWith(notifications: []);
+
+    try {
+      await _repo.clearAll(_userId!);
+      state = state.copyWith(
+        notifications: [],
+        unreadCount: 0,
+      );
+    } catch (_) {}
   }
 
-  // Naya notification add karo (realtime ke liye)
-  void addNotification(NotificationModel notification) {
-    state = state.copyWith(
-      notifications: [
-        notification,
-        ...state.notifications,
-      ],
-    );
-  }
-
-  Future<void> refresh() async {
-    await loadNotifications();
-  }
+  Future<void> refresh() => _load();
 }
 
-// ── NOTIFICATIONS PROVIDER ────────────────────────────────
-final notificationsProvider = StateNotifierProvider<
-    NotificationsNotifier, NotificationsState>(
-      (ref) {
-    final userId = ref.watch(currentUidProvider);
-    return NotificationsNotifier(
-      ref.read(notificationRepositoryProvider),
-      userId,
-    );
-  },
-);
+final notificationsProvider =
+StateNotifierProvider<NotificationsNotifier,
+    NotificationsState>((ref) {
+  final userId = ref.watch(currentUidProvider);
+  return NotificationsNotifier(
+    ref.read(notificationRepositoryProvider),
+    userId,
+  );
+});
 
-// ── UNREAD COUNT PROVIDER (badge ke liye) ─────────────────
+// Convenience — unread count only
 final unreadNotificationsCountProvider =
 Provider<int>((ref) {
-  return ref.watch(notificationsProvider).unreadCount;
+  return ref
+      .watch(notificationsProvider)
+      .unreadCount;
 });
 
 // ─────────────────────────────────────────────────────────
 // BOTTOM NAV STATE
 // ─────────────────────────────────────────────────────────
 
-class BottomNavState {
-  final int currentIndex;
+class BottomNavNotifier extends StateNotifier<int> {
+  BottomNavNotifier() : super(0);
 
-  const BottomNavState({this.currentIndex = 0});
-
-  BottomNavState copyWith({int? currentIndex}) {
-    return BottomNavState(
-      currentIndex: currentIndex ?? this.currentIndex,
-    );
-  }
-}
-
-class BottomNavNotifier
-    extends StateNotifier<BottomNavState> {
-  BottomNavNotifier() : super(const BottomNavState());
-
-  void setIndex(int index) {
-    state = state.copyWith(currentIndex: index);
+  void goTo(int index) {
+    if (index < 0 || index > 4) return;
+    state = index;
   }
 
-  void goHome() => setIndex(0);
-  void goSearch() => setIndex(1);
-  void goInterests() => setIndex(2);
-  void goChat() => setIndex(3);
-  void goProfile() => setIndex(4);
+  void goHome()      => state = 0;
+  void goSearch()    => state = 1;
+  void goInterests() => state = 2;
+  void goChat()      => state = 3;
+  void goProfile()   => state = 4;
 }
 
-// ── BOTTOM NAV PROVIDER ───────────────────────────────────
 final bottomNavProvider =
-StateNotifierProvider<BottomNavNotifier, BottomNavState>(
+StateNotifierProvider<BottomNavNotifier, int>(
       (ref) => BottomNavNotifier(),
 );
 
@@ -427,150 +414,163 @@ StateNotifierProvider<BottomNavNotifier, BottomNavState>(
 
 enum AppInitStatus {
   initializing,
-  unauthenticated,
-  authenticated,
-  profileSetupRequired,
   ready,
   error,
 }
 
 class AppInitState {
   final AppInitStatus status;
-  final String? error;
-  final String? uid;
+  final String? errorMessage;
 
   const AppInitState({
     this.status = AppInitStatus.initializing,
-    this.error,
-    this.uid,
+    this.errorMessage,
   });
 
-  AppInitState copyWith({
-    AppInitStatus? status,
-    String? error,
-    String? uid,
-  }) {
-    return AppInitState(
-      status: status ?? this.status,
-      error: error,
-      uid: uid ?? this.uid,
-    );
-  }
-
-  bool get isReady => status == AppInitStatus.ready;
-  bool get isLoading =>
+  bool get isInitializing =>
       status == AppInitStatus.initializing;
-  bool get needsAuth =>
-      status == AppInitStatus.unauthenticated;
-  bool get needsProfileSetup =>
-      status == AppInitStatus.profileSetupRequired;
+  bool get isReady =>
+      status == AppInitStatus.ready;
+  bool get hasError =>
+      status == AppInitStatus.error;
 }
 
-// ── APP INIT NOTIFIER ─────────────────────────────────────
-class AppInitNotifier extends StateNotifier<AppInitState> {
-  AppInitNotifier() : super(const AppInitState()) {
-    _initialize();
+// ─────────────────────────────────────────────────────────
+// APP INIT NOTIFIER
+// ─────────────────────────────────────────────────────────
+
+class AppInitNotifier
+    extends StateNotifier<AppInitState> {
+  AppInitNotifier()
+      : super(const AppInitState()) {
+    _init();
   }
 
-  Future<void> _initialize() async {
-    state = state.copyWith(
-        status: AppInitStatus.initializing);
-
+  Future<void> _init() async {
     try {
-      // TODO: Firebase Auth state check karo
-      // final user = FirebaseAuth.instance.currentUser;
-      //
-      // if (user == null) {
-      //   state = state.copyWith(
-      //     status: AppInitStatus.unauthenticated);
-      //   return;
-      // }
-      //
-      // state = state.copyWith(uid: user.uid);
-      //
-      // Check karo profile banaya hai ya nahi
-      // final profile = await ProfileRepository()
-      //   .getProfileByUserId(user.uid);
-      //
-      // if (profile == null) {
-      //   state = state.copyWith(
-      //     status: AppInitStatus.profileSetupRequired);
-      //   return;
-      // }
-      //
-      // state = state.copyWith(
-      //   status: AppInitStatus.ready);
-
-      // Mock: Direct ready
+      // Simulate initialization tasks
       await Future.delayed(
-          const Duration(milliseconds: 500));
-      state = state.copyWith(
-          status: AppInitStatus.unauthenticated);
+          const Duration(milliseconds: 1500));
+
+      // Phase 3: Firebase initialize karo
+      // await Firebase.initializeApp();
+
+      state = const AppInitState(
+          status: AppInitStatus.ready);
     } catch (e) {
-      state = state.copyWith(
+      state = AppInitState(
         status: AppInitStatus.error,
-        error: e.toString(),
+        errorMessage: e.toString(),
       );
     }
   }
 
-  void setAuthenticated(String uid) {
-    state = state.copyWith(
-      status: AppInitStatus.authenticated,
-      uid: uid,
-    );
-  }
-
-  void setProfileSetupRequired() {
-    state = state.copyWith(
-        status: AppInitStatus.profileSetupRequired);
-  }
-
-  void setReady() {
-    state =
-        state.copyWith(status: AppInitStatus.ready);
-  }
-
-  void setUnauthenticated() {
-    state = state.copyWith(
-      status: AppInitStatus.unauthenticated,
-      uid: null,
-    );
-  }
-
   Future<void> retry() async {
-    await _initialize();
+    state = const AppInitState(
+        status: AppInitStatus.initializing);
+    await _init();
   }
 }
 
-// ── APP INIT PROVIDER ─────────────────────────────────────
-final appInitProvider =
-StateNotifierProvider<AppInitNotifier, AppInitState>(
+final appInitProvider = StateNotifierProvider<
+    AppInitNotifier, AppInitState>(
       (ref) => AppInitNotifier(),
 );
 
 // ─────────────────────────────────────────────────────────
-// GLOBAL CONVENIENCE PROVIDERS
+// LOADING STATE PROVIDER
+// Global loading overlay ke liye
 // ─────────────────────────────────────────────────────────
 
-/// Dark mode hai ya nahi
+class LoadingNotifier extends StateNotifier<bool> {
+  LoadingNotifier() : super(false);
+
+  void show() => state = true;
+  void hide() => state = false;
+  void toggle() => state = !state;
+}
+
+final globalLoadingProvider =
+StateNotifierProvider<LoadingNotifier, bool>(
+      (ref) => LoadingNotifier(),
+);
+
+// ─────────────────────────────────────────────────────────
+// SNACKBAR / TOAST STATE
+// ─────────────────────────────────────────────────────────
+
+enum SnackType { info, success, error, warning }
+
+class SnackMessage {
+  final String message;
+  final SnackType type;
+  final DateTime timestamp;
+
+  SnackMessage({
+    required this.message,
+    required this.type,
+  }) : timestamp = DateTime.now();
+}
+
+class SnackNotifier
+    extends StateNotifier<SnackMessage?> {
+  SnackNotifier() : super(null);
+
+  void show(String message,
+      {SnackType type = SnackType.info}) {
+    state = SnackMessage(
+        message: message, type: type);
+  }
+
+  void showSuccess(String message) =>
+      show(message, type: SnackType.success);
+
+  void showError(String message) =>
+      show(message, type: SnackType.error);
+
+  void showWarning(String message) =>
+      show(message, type: SnackType.warning);
+
+  void dismiss() => state = null;
+}
+
+final snackProvider =
+StateNotifierProvider<SnackNotifier,
+    SnackMessage?>(
+      (ref) => SnackNotifier(),
+);
+
+// ─────────────────────────────────────────────────────────
+// SEARCH QUERY STATE
+// ─────────────────────────────────────────────────────────
+
+final searchQueryProvider =
+StateProvider<String>((ref) => '');
+
+// ─────────────────────────────────────────────────────────
+// CONVENIENCE COMPUTED PROVIDERS
+// ─────────────────────────────────────────────────────────
+
+/// Is app fully initialized and ready
+final isAppReadyProvider = Provider<bool>((ref) {
+  return ref
+      .watch(appInitProvider)
+      .isReady;
+});
+
+/// Is dark mode enabled
 final isDarkModeProvider = Provider<bool>((ref) {
   return ref.watch(appSettingsProvider).isDarkMode;
 });
 
-/// App language
-final appLanguageProvider = Provider<String>((ref) {
-  return ref.watch(appSettingsProvider).language;
+/// Current theme mode
+final themeModeProvider =
+Provider<ThemeMode>((ref) {
+  return ref.watch(appSettingsProvider).themeMode;
 });
 
-/// Internet connection hai ya nahi
-final isOnlineProvider = Provider<bool>((ref) {
-  return ref.watch(connectivityProvider).isOnline;
-});
-
-/// App theme
-final appThemeProvider = Provider<ThemeData>((ref) {
-  final isDark = ref.watch(isDarkModeProvider);
-  // TODO: Dark theme implement karo
-  return ThemeData.light();
+/// Current bottom nav index
+final currentNavIndexProvider =
+Provider<int>((ref) {
+  return ref.watch(bottomNavProvider);
 });

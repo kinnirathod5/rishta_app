@@ -1,410 +1,594 @@
+// lib/presentation/auth/explore_first_screen.dart
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rishta_app/core/constants/app_colors.dart';
+import 'package:rishta_app/core/constants/app_strings.dart';
+import 'package:rishta_app/core/constants/app_text_styles.dart';
+import 'package:rishta_app/core/widgets/custom_button.dart';
+import 'package:rishta_app/providers/auth_provider.dart';
 
-import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_routes.dart';
-import '../../core/constants/app_strings.dart';
-
-class ExploreFirstScreen extends StatefulWidget {
+class ExploreFirstScreen
+    extends ConsumerStatefulWidget {
   const ExploreFirstScreen({super.key});
 
   @override
-  State<ExploreFirstScreen> createState() => _ExploreFirstScreenState();
+  ConsumerState<ExploreFirstScreen> createState() =>
+      _ExploreFirstScreenState();
 }
 
-class _ExploreFirstScreenState extends State<ExploreFirstScreen> {
-  String _selectedOption = 'register';
+class _ExploreFirstScreenState
+    extends ConsumerState<ExploreFirstScreen>
+    with SingleTickerProviderStateMixin {
 
-  void _onContinue() {
-    if (_selectedOption == 'guest') {
-      context.go(AppRoutePaths.home);
-    } else {
-      context.go(AppRoutePaths.profileType);
-    }
+  // Entry animation
+  late AnimationController _ctrl;
+  late Animation<double> _fade;
+  late Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _fade = CurvedAnimation(
+      parent: _ctrl,
+      curve: Curves.easeOut,
+    );
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.06),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _ctrl,
+      curve: Curves.easeOut,
+    ));
+    _ctrl.forward();
   }
 
   @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _exploreAsGuest() async {
+    final ok = await ref
+        .read(authProvider.notifier)
+        .signInAnonymously();
+    if (!mounted) return;
+    if (ok) context.go('/home');
+  }
+
+  void _createAccount() =>
+      context.go('/phone');
+
+  @override
   Widget build(BuildContext context) {
+    final isLoading = ref.watch(
+        authProvider.select((s) => s.isLoading));
+
     return Scaffold(
       backgroundColor: AppColors.ivory,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 16),
-              _buildTopSection(),
-              const SizedBox(height: 32),
-              _buildGuestCard(),
-              const SizedBox(height: 12),
-              _buildRegisterCard(),
-              const Spacer(),
-              _buildContinueButton(),
-              const SizedBox(height: 16),
-              _buildBottomNote(),
-            ],
+      body: FadeTransition(
+        opacity: _fade,
+        child: SlideTransition(
+          position: _slide,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  24, 16, 24, 32),
+              child: Column(
+                crossAxisAlignment:
+                CrossAxisAlignment.start,
+                children: [
+                  _buildBackButton(),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics:
+                      const BouncingScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment:
+                        CrossAxisAlignment
+                            .start,
+                        children: [
+                          const SizedBox(
+                              height: 28),
+                          _buildHeader(),
+                          const SizedBox(
+                              height: 36),
+                          _buildBrowseCard(
+                              isLoading),
+                          const SizedBox(
+                              height: 16),
+                          _buildCreateCard(),
+                          const SizedBox(
+                              height: 32),
+                          _buildFeatureCompare(),
+                          const SizedBox(
+                              height: 24),
+                        ],
+                      ),
+                    ),
+                  ),
+                  _buildBottomButtons(isLoading),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  // ── TOP SECTION ───────────────────────────────────────────
-  Widget _buildTopSection() {
-    return Center(
-      child: Column(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.crimsonSurface,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: const Center(
-              child: Text('💑', style: TextStyle(fontSize: 32)),
-            ),
+  // ── BACK BUTTON ───────────────────────────────────────
+
+  Widget _buildBackButton() {
+    return GestureDetector(
+      onTap: () => context.go('/welcome'),
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: AppColors.ivoryDark,
+          borderRadius: BorderRadius.circular(12),
+          border:
+          Border.all(color: AppColors.border),
+        ),
+        child: const Center(
+          child: Icon(
+            Icons.arrow_back_ios_new,
+            size: 16,
+            color: AppColors.ink,
           ),
-          const SizedBox(height: 20),
-          const Text(
-            AppStrings.exploreTitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Account banao ya pehle browse karo',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: AppColors.muted),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  // ── GUEST CARD ────────────────────────────────────────────
-  Widget _buildGuestCard() {
-    final isSelected = _selectedOption == 'guest';
+  // ── HEADER ────────────────────────────────────────────
+
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '🚀',
+          style: TextStyle(fontSize: 44),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          AppStrings.howToStart,
+          style: AppTextStyles.onboardTitle,
+        ),
+        const SizedBox(height: 10),
+        Text(
+          AppStrings.chooseBestOption,
+          style: AppTextStyles.onboardSubtitle,
+        ),
+      ],
+    );
+  }
+
+  // ── BROWSE CARD ───────────────────────────────────────
+
+  Widget _buildBrowseCard(bool isLoading) {
     return GestureDetector(
-      onTap: () => setState(() => _selectedOption = 'guest'),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.all(18),
+      onTap: isLoading ? null : _exploreAsGuest,
+      child: Container(
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? AppColors.crimson : AppColors.border,
-            width: 2,
-          ),
-          boxShadow: isSelected ? AppColors.cardShadow : [],
+              color: AppColors.border, width: 1.5),
+          boxShadow: AppColors.softShadow,
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          crossAxisAlignment:
+          CrossAxisAlignment.start,
           children: [
-            _buildRadio(isSelected),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      Text('👀', style: TextStyle(fontSize: 20)),
-                      SizedBox(width: 8),
-                      Text(
-                        AppStrings.guestCardTitle,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    AppStrings.guestCardSubtitle,
-                    style: TextStyle(fontSize: 13, color: AppColors.muted),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: const [
-                      _GuestChip(label: AppStrings.guestFeature1),
-                      _GuestChip(label: AppStrings.guestFeature2),
-                      _GuestChip(label: AppStrings.guestFeature3),
-                    ],
-                  ),
-                ],
+            // Header row
+            Row(children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.ivoryDark,
+                  borderRadius:
+                  BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Text('👀',
+                      style: TextStyle(
+                          fontSize: 24)),
+                ),
               ),
-            ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                  CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.browseFirst,
+                      style: AppTextStyles.h4,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      AppStrings.browseFirstSub,
+                      style: AppTextStyles
+                          .bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: AppColors.muted,
+              ),
+            ]),
+            const SizedBox(height: 16),
+            const Divider(
+                color: AppColors.border,
+                height: 1),
+            const SizedBox(height: 14),
+            // Restrictions
+            _buildLimitationRow(
+                AppStrings.photosBlurred),
+            const SizedBox(height: 8),
+            _buildLimitationRow(
+                AppStrings.contactHidden),
+            const SizedBox(height: 8),
+            _buildLimitationRow(
+                AppStrings.chatDisabled),
           ],
         ),
       ),
     );
   }
 
-  // ── REGISTER CARD ─────────────────────────────────────────
-  Widget _buildRegisterCard() {
-    final isSelected = _selectedOption == 'register';
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        GestureDetector(
-          onTap: () => setState(() => _selectedOption = 'register'),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: isSelected ? AppColors.crimsonSurface : AppColors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected ? AppColors.crimson : AppColors.border,
-                width: 2,
-              ),
-              boxShadow: isSelected ? AppColors.cardShadow : [],
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildRadio(isSelected),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text('✨', style: TextStyle(fontSize: 20)),
-                          const SizedBox(width: 8),
-                          Text(
-                            AppStrings.registerCardTitle,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: isSelected
-                                  ? AppColors.crimson
-                                  : AppColors.ink,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        AppStrings.registerCardSubtitle,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isSelected
-                              ? AppColors.crimson.withOpacity(0.70)
-                              : AppColors.muted,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          _RegisterChip(
-                            label: AppStrings.registerFeature1,
-                            isSelected: isSelected,
-                          ),
-                          _RegisterChip(
-                            label: AppStrings.registerFeature2,
-                            isSelected: isSelected,
-                          ),
-                          _RegisterChip(
-                            label: AppStrings.registerFeature3,
-                            isSelected: isSelected,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+  Widget _buildLimitationRow(String text) {
+    return Row(children: [
+      Container(
+        width: 20,
+        height: 20,
+        decoration: BoxDecoration(
+          color: AppColors.ivoryDark,
+          shape: BoxShape.circle,
+        ),
+        child: const Center(
+          child: Icon(
+            Icons.lock_outline_rounded,
+            size: 11,
+            color: AppColors.muted,
           ),
         ),
-        // RECOMMENDED badge
-        Positioned(
-          top: -10,
-          right: 14,
-          child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.gold, AppColors.goldLight],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-              borderRadius: BorderRadius.circular(100),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.gold.withOpacity(0.30),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('⭐', style: TextStyle(fontSize: 10)),
-                SizedBox(width: 4),
-                Text(
-                  'RECOMMENDED',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
+      ),
+      const SizedBox(width: 10),
+      Text(
+        text,
+        style: AppTextStyles.bodySmall.copyWith(
+          color: AppColors.muted,
         ),
-      ],
+      ),
+    ]);
+  }
+
+  // ── CREATE ACCOUNT CARD ───────────────────────────────
+
+  Widget _buildCreateCard() {
+    return GestureDetector(
+      onTap: _createAccount,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.crimson,
+              AppColors.crimsonDark,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppColors.crimsonShadow,
+        ),
+        child: Column(
+          crossAxisAlignment:
+          CrossAxisAlignment.start,
+          children: [
+            // Recommended badge
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.goldLight
+                    .withOpacity(0.2),
+                borderRadius:
+                BorderRadius.circular(100),
+                border: Border.all(
+                    color: AppColors.goldLight
+                        .withOpacity(0.4)),
+              ),
+              child: Text(
+                AppStrings.recommended,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.goldLight,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            // Header row
+            Row(children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white
+                      .withOpacity(0.15),
+                  borderRadius:
+                  BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Text('✨',
+                      style: TextStyle(
+                          fontSize: 24)),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                  CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.createAccount,
+                      style:
+                      AppTextStyles.h4.copyWith(
+                          color: Colors.white),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      AppStrings.createAccountSub,
+                      style: AppTextStyles
+                          .bodySmall
+                          .copyWith(
+                          color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: Colors.white54,
+              ),
+            ]),
+            const SizedBox(height: 16),
+            Divider(
+              color: Colors.white.withOpacity(0.2),
+              height: 1,
+            ),
+            const SizedBox(height: 14),
+            // Benefits
+            _buildBenefitRow(
+                AppStrings.viewPhotos),
+            const SizedBox(height: 8),
+            _buildBenefitRow(
+                AppStrings.sendInterests),
+            const SizedBox(height: 8),
+            _buildBenefitRow(
+                AppStrings.chatDirectly),
+          ],
+        ),
+      ),
     );
   }
 
-  // ── RADIO INDICATOR ───────────────────────────────────────
-  Widget _buildRadio(bool isSelected) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      width: 22,
-      height: 22,
+  Widget _buildBenefitRow(String text) {
+    return Row(children: [
+      Container(
+        width: 20,
+        height: 20,
+        decoration: const BoxDecoration(
+          color: Colors.white24,
+          shape: BoxShape.circle,
+        ),
+        child: const Center(
+          child: Icon(
+            Icons.check_rounded,
+            size: 12,
+            color: Colors.white,
+          ),
+        ),
+      ),
+      const SizedBox(width: 10),
+      Text(
+        text,
+        style:
+        AppTextStyles.bodySmall.copyWith(
+            color: Colors.white),
+      ),
+    ]);
+  }
+
+  // ── FEATURE COMPARE ───────────────────────────────────
+
+  Widget _buildFeatureCompare() {
+    return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isSelected ? AppColors.crimson : AppColors.border,
-          width: 2,
-        ),
+            color: AppColors.border),
       ),
-      child: isSelected
-          ? Center(
-              child: Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                  color: AppColors.crimson,
-                  shape: BoxShape.circle,
+      child: Column(
+        children: [
+          // Header row
+          Row(children: [
+            const Expanded(child: SizedBox()),
+            Expanded(
+              child: Center(
+                child: Text(
+                  'Guest',
+                  style: AppTextStyles
+                      .labelSmall
+                      .copyWith(
+                      color:
+                      AppColors.muted),
                 ),
               ),
-            )
-          : null,
-    );
-  }
-
-  // ── CONTINUE BUTTON ───────────────────────────────────────
-  Widget _buildContinueButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: ElevatedButton(
-        onPressed: _onContinue,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.crimson,
-          foregroundColor: AppColors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          child: Text(
-            key: ValueKey(_selectedOption),
-            _selectedOption == 'guest'
-                ? '${AppStrings.guestCardTitle} →'
-                : '${AppStrings.registerCardTitle} →',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.white,
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── BOTTOM NOTE ───────────────────────────────────────────
-  Widget _buildBottomNote() {
-    return const Center(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.info_outline_rounded, size: 13, color: AppColors.muted),
-          SizedBox(width: 5),
-          Text(
-            'Baad mein bhi account bana sakte ho',
-            style: TextStyle(fontSize: 12, color: AppColors.muted),
-          ),
+            Expanded(
+              child: Center(
+                child: Text(
+                  'Member',
+                  style: AppTextStyles
+                      .labelSmall
+                      .copyWith(
+                      color:
+                      AppColors.crimson,
+                      fontWeight:
+                      FontWeight.w700),
+                ),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 8),
+          Divider(color: AppColors.border),
+          const SizedBox(height: 4),
+          // Feature rows
+          ..._compareRows.map(
+                  (row) => _FeatureRow(
+                feature: row[0],
+                guestValue: row[1],
+                memberValue: row[2],
+              )),
         ],
       ),
     );
   }
-}
 
-// ── CHIP WIDGETS ──────────────────────────────────────────────
-class _GuestChip extends StatelessWidget {
-  const _GuestChip({required this.label});
-  final String label;
+  static const List<List<String>> _compareRows =
+  [
+    ['Browse profiles', '✓', '✓'],
+    ['View photos', '🔒', '✓'],
+    ['Send interests', '✗', '✓'],
+    ['Chat', '✗', '✓'],
+    ['Contact details', '🔒', '✓'],
+    ['Save shortlist', '✗', '✓'],
+  ];
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 11, color: AppColors.muted),
-      ),
+  // ── BOTTOM BUTTONS ────────────────────────────────────
+
+  Widget _buildBottomButtons(bool isLoading) {
+    return Column(
+      children: [
+        PrimaryButton(
+          label: AppStrings.createAccount,
+          icon: Icons.arrow_forward_rounded,
+          onPressed: _createAccount,
+        ),
+        const SizedBox(height: 10),
+        AppTextButton(
+          label: AppStrings.browseFirst,
+          icon: Icons.explore_outlined,
+          color: AppColors.muted,
+          onPressed:
+          isLoading ? null : _exploreAsGuest,
+        ),
+      ],
     );
   }
 }
 
-class _RegisterChip extends StatelessWidget {
-  const _RegisterChip({required this.label, required this.isSelected});
-  final String label;
-  final bool isSelected;
+// ─────────────────────────────────────────────────────────
+// FEATURE COMPARE ROW
+// ─────────────────────────────────────────────────────────
+
+class _FeatureRow extends StatelessWidget {
+  final String feature;
+  final String guestValue;
+  final String memberValue;
+
+  const _FeatureRow({
+    required this.feature,
+    required this.guestValue,
+    required this.memberValue,
+  });
+
+  Widget _cell(String value) {
+    final isCheck = value == '✓';
+    final isCross = value == '✗';
+    final isLock = value == '🔒';
+
+    return Center(
+      child: isCheck
+          ? Container(
+        width: 22,
+        height: 22,
+        decoration: const BoxDecoration(
+          color: AppColors.successSurface,
+          shape: BoxShape.circle,
+        ),
+        child: const Center(
+          child: Icon(
+            Icons.check_rounded,
+            size: 13,
+            color: AppColors.success,
+          ),
+        ),
+      )
+          : isCross
+          ? Container(
+        width: 22,
+        height: 22,
+        decoration: const BoxDecoration(
+          color: AppColors.errorSurface,
+          shape: BoxShape.circle,
+        ),
+        child: const Center(
+          child: Icon(
+            Icons.close_rounded,
+            size: 13,
+            color: AppColors.error,
+          ),
+        ),
+      )
+          : Text(
+        value,
+        style: const TextStyle(
+            fontSize: 14),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: isSelected ? AppColors.white : const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(100),
-        border: isSelected
-            ? Border.all(
-                color: AppColors.crimson.withOpacity(0.30),
-                width: 1,
-              )
-            : null,
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-          color: isSelected ? AppColors.success : AppColors.muted,
+    return Padding(
+      padding:
+      const EdgeInsets.symmetric(vertical: 7),
+      child: Row(children: [
+        Expanded(
+          child: Text(
+            feature,
+            style: AppTextStyles.bodySmall
+                .copyWith(
+                color: AppColors.inkSoft),
+          ),
         ),
-      ),
+        Expanded(child: _cell(guestValue)),
+        Expanded(child: _cell(memberValue)),
+      ]),
     );
   }
 }

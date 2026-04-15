@@ -1,3 +1,5 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,15 +7,15 @@ import 'core/theme/app_theme.dart';
 import 'core/constants/app_routes.dart';
 import 'core/constants/app_strings.dart';
 
-// ─────────────────────────────────────────────────────────────
-// NOTE: Firebase initialization yahan baad mein aayegi
-// Abhi bina Firebase ke app chalega (mock data ke saath)
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// NOTE: Firebase initialization will be added in Phase 3
+// App runs on mock data for now
+// ─────────────────────────────────────────────────────────
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Status bar transparent rakho
+  // Transparent status bar
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -28,7 +30,6 @@ void main() async {
   ]);
 
   runApp(
-    // ProviderScope — Riverpod ke liye zaroor
     const ProviderScope(
       child: RishtaApp(),
     ),
@@ -41,14 +42,13 @@ class RishtaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      // ── APP INFO ──────────────────────────────────
       title: AppStrings.appName,
       debugShowCheckedModeBanner: false,
 
-      // ── THEME ─────────────────────────────────────
-      theme: AppTheme.lightTheme,
+      // ✅ AppTheme.light  (NOT lightTheme)
+      theme: AppTheme.light,
 
-      // ── ROUTER ────────────────────────────────────
+      // ✅ AppRoutes.router
       routerConfig: AppRoutes.router,
     );
   }

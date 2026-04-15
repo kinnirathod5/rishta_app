@@ -1,440 +1,586 @@
+// lib/presentation/auth/profile_setup/step2_religion.dart
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rishta_app/core/constants/app_colors.dart';
+import 'package:rishta_app/core/constants/app_text_styles.dart';
+import 'package:rishta_app/core/utils/validators.dart';
+import 'package:rishta_app/core/widgets/custom_button.dart';
+import 'package:rishta_app/core/widgets/custom_text_field.dart';
+import 'package:rishta_app/core/widgets/loading_overlay.dart';
+import 'package:rishta_app/providers/auth_provider.dart';
+import 'package:rishta_app/data/models/profile_model.dart';
+import 'package:rishta_app/providers/profile_provider.dart';
 
-import '../../../core/constants/app_colors.dart';
+// ─────────────────────────────────────────────────────────
+// RELIGION / CASTE DATA
+// ─────────────────────────────────────────────────────────
 
-class Step2Religion extends StatefulWidget {
+// Religion → Caste mapping
+const Map<String, List<String>> _castesFor = {
+  'Hindu': [
+    'Brahmin', 'Kshatriya', 'Vaishya', 'Kayastha',
+    'Rajput', 'Bania', 'Patel / Patidar',
+    'Yadav', 'Jat', 'Reddy', 'Nair', 'Iyer',
+    'Iyengar', 'Naidu', 'Lingayat', 'Maratha',
+    'Khatri', 'Arora', 'Aggarwal', 'Gupta',
+    'Kurmi', 'Kumhar', 'Other',
+  ],
+  'Muslim': [
+    'Syed', 'Sheikh', 'Mughal', 'Pathan',
+    'Ansari', 'Qureshi', 'Rajput', 'Malik',
+    'Khoja', 'Bohra', 'Memon', 'Other',
+  ],
+  'Christian': [
+    'Catholic', 'Protestant', 'CSI', 'CNI',
+    'Pentecostal', 'Methodist', 'Baptist',
+    'Jacobite', 'Other',
+  ],
+  'Sikh': [
+    'Jat Sikh', 'Khatri Sikh', 'Arora Sikh',
+    'Ramgarhia', 'Saini', 'Ramdasia', 'Other',
+  ],
+  'Jain': [
+    'Digambar', 'Shwetambar', 'Oswal',
+    'Porwal', 'Srimali', 'Other',
+  ],
+  'Buddhist': [
+    'Mahayana', 'Theravada', 'Vajrayana',
+    'Ambedkarite', 'Other',
+  ],
+  'Parsi': ['Parsi', 'Other'],
+  'Other': ['Other'],
+};
+
+const List<String> _religions = [
+  'Hindu', 'Muslim', 'Christian', 'Sikh',
+  'Jain', 'Buddhist', 'Parsi', 'Other',
+];
+
+const List<String> _motherTongues = [
+  'Hindi', 'Bengali', 'Telugu', 'Marathi',
+  'Tamil', 'Gujarati', 'Kannada', 'Malayalam',
+  'Punjabi', 'Odia', 'Urdu', 'English', 'Other',
+];
+
+// ─────────────────────────────────────────────────────────
+// STEP 2 — RELIGION
+// Fields: Religion, Caste, Sub-Caste,
+//         Gotra, Manglik Status
+// ─────────────────────────────────────────────────────────
+
+class Step2Religion extends ConsumerStatefulWidget {
   const Step2Religion({super.key});
 
   @override
-  State<Step2Religion> createState() => _Step2ReligionState();
+  ConsumerState<Step2Religion> createState() =>
+      _Step2ReligionState();
 }
 
-class _Step2ReligionState extends State<Step2Religion> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController _subCasteController = TextEditingController();
-  final TextEditingController _gotraController = TextEditingController();
+class _Step2ReligionState
+    extends ConsumerState<Step2Religion>
+    with SingleTickerProviderStateMixin {
 
+  final _formKey = GlobalKey<FormState>();
+
+  // Controllers
+  final _subCasteCtrl = TextEditingController();
+  final _gotraCtrl = TextEditingController();
+
+  // Dropdown values
   String? _religion;
   String? _caste;
-  String _manglik = 'no';
-  String? _nakshatra;
+  String? _manglik;
 
-  // ── DATA ──────────────────────────────────────────────
-  static const List<String> _religions = [
-    'Hindu', 'Muslim', 'Sikh', 'Christian',
-    'Jain', 'Buddhist', 'Parsi', 'Jewish', 'Other',
-  ];
+  // Entry animation
+  late AnimationController _ctrl;
+  late Animation<double> _fade;
+  late Animation<Offset> _slide;
 
-  static const Map<String, String> _religionEmojis = {
-    'Hindu': '🛕',
-    'Muslim': '🕌',
-    'Sikh': '⚔️',
-    'Christian': '✝️',
-    'Jain': '☸️',
-    'Buddhist': '☸️',
-    'Parsi': '🔥',
-    'Jewish': '✡️',
-    'Other': '🙏',
-  };
+  // Available castes based on selected religion
+  List<String> get _availableCastes =>
+      _religion != null
+          ? (_castesFor[_religion] ?? ['Other'])
+          : [];
 
-  static const Map<String, List<String>> _casteOptions = {
-    'Hindu': [
-      'Brahmin', 'Kshatriya', 'Vaishya', 'Kayastha', 'Rajput', 'Jat',
-      'Maratha', 'Nair', 'Reddy', 'Naidu', 'Lingayat', 'Vokkaliga',
-      'Scheduled Caste', 'Scheduled Tribe', 'Other',
-    ],
-    'Muslim': [
-      'Sunni', 'Shia', 'Syed', 'Sheikh', 'Pathan', 'Mughal', 'Ansari',
-      'Other',
-    ],
-    'Sikh': [
-      'Jat Sikh', 'Khatri', 'Arora', 'Ramgarhia', 'Saini', 'Other',
-    ],
-    'Christian': [
-      'Catholic', 'Protestant', 'Orthodox', 'Born Again', 'Other',
-    ],
-    'Jain': ['Digambar', 'Shwetambar', 'Other'],
-  };
+  @override
+  void initState() {
+    super.initState();
+    _setupAnimation();
+    _ctrl.forward();
+    _loadExistingData();
+  }
 
-  static const List<String> _nakshatras = [
-    'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra',
-    'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni',
-    'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha',
-    'Jyeshtha', 'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana',
-    'Dhanishtha', 'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada',
-    'Revati', 'Pata Nahi',
-  ];
+  void _setupAnimation() {
+    _ctrl = AnimationController(
+      vsync: this,
+      duration:
+      const Duration(milliseconds: 500),
+    );
+    _fade = CurvedAnimation(
+        parent: _ctrl, curve: Curves.easeOut);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.05),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+        parent: _ctrl, curve: Curves.easeOut));
+  }
 
-  static const List<Map<String, String>> _manglikOptions = [
-    {'label': 'Haan', 'value': 'yes', 'emoji': '⚠️'},
-    {'label': 'Nahi', 'value': 'no', 'emoji': '✅'},
-    {'label': 'Anshik', 'value': 'partial', 'emoji': '🔶'},
-  ];
+  void _loadExistingData() {
+    // Load from existing profile if editing
+    final profile =
+    ref.read(currentProfileProvider);
+    if (profile == null) return;
+
+    setState(() {
+      _religion = profile.religion.isNotEmpty
+          ? profile.religion
+          : null;
+      _caste = profile.caste.isNotEmpty
+          ? profile.caste
+          : null;
+      _subCasteCtrl.text =
+          profile.subCaste ?? '';
+      _gotraCtrl.text = profile.gotra ?? '';
+      _manglik = profile.manglik.value != 'no'
+          ? profile.manglik.value
+          : null;
+    });
+  }
 
   @override
   void dispose() {
-    _subCasteController.dispose();
-    _gotraController.dispose();
+    _ctrl.dispose();
+    _subCasteCtrl.dispose();
+    _gotraCtrl.dispose();
     super.dispose();
   }
 
-  // ── PICKERS ───────────────────────────────────────────
-  void _showReligionPicker() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  // ── SUBMIT ────────────────────────────────────────────
+
+  Future<void> _next() async {
+    FocusScope.of(context).unfocus();
+
+    if (!(_formKey.currentState?.validate() ??
+        false)) return;
+
+    final profileId =
+        ref.read(currentProfileProvider)?.id;
+    if (profileId == null) {
+      _showError('Profile not found. Please go back.');
+      return;
+    }
+
+    final data = {
+      'religion': _religion ?? '',
+      'caste': _caste ?? '',
+      'subCaste': _subCasteCtrl.text.trim(),
+      'gotra': _gotraCtrl.text.trim(),
+      'manglik': _manglik ?? 'no',
+    };
+
+    final ok = await ref
+        .read(myProfileProvider.notifier)
+        .updateProfile(data);
+
+    if (!mounted) return;
+    if (ok) {
+      context.go('/setup/step3');
+    } else {
+      final error =
+          ref.read(myProfileProvider).error;
+      _showError(
+          error ?? 'Something went wrong.');
+    }
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg,
+            style: const TextStyle(
+                color: Colors.white)),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+            borderRadius:
+            BorderRadius.circular(10)),
       ),
-      builder: (context) {
-        return SizedBox(
-          height: 420,
-          child: Column(
-            children: [
-              // Drag handle
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 12),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.ivoryDark,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Header
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isSaving =
+        ref.watch(myProfileProvider).isSaving;
+
+    return Scaffold(
+      backgroundColor: AppColors.ivory,
+      body: Stack(
+        children: [
+          FadeTransition(
+            opacity: _fade,
+            child: SlideTransition(
+              position: _slide,
+              child: SafeArea(
+                child: Column(
                   children: [
-                    const Text(
-                      'Dharm Chunein',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
+                    _buildHeader(),
+                    _buildProgressBar(),
+                    Expanded(
+                      child: Form(
+                        key: _formKey,
+                        child: SingleChildScrollView(
+                          padding:
+                          const EdgeInsets
+                              .fromLTRB(
+                              24, 24,
+                              24, 100),
+                          physics:
+                          const BouncingScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment:
+                            CrossAxisAlignment
+                                .start,
+                            children: [
+                              _buildStepTitle(),
+                              const SizedBox(
+                                  height: 24),
+                              _buildReligionField(),
+                              const SizedBox(
+                                  height: 18),
+                              _buildCasteField(),
+                              const SizedBox(
+                                  height: 18),
+                              _buildSubCasteField(),
+                              const SizedBox(
+                                  height: 18),
+                              _buildGotraField(),
+                              const SizedBox(
+                                  height: 18),
+                              _buildManglikField(),
+                              const SizedBox(
+                                  height: 24),
+                              _buildInfoNote(),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: AppColors.ivoryDark,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.close,
-                          size: 16,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                    ),
+                    _buildBottomBar(isSaving),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              const Divider(height: 1, color: AppColors.border),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _religions.length,
-                  itemBuilder: (context, index) {
-                    final religion = _religions[index];
-                    final isSelected = _religion == religion;
-                    return ListTile(
-                      leading: Text(
-                        _religionEmojis[religion] ?? '🙏',
-                        style: const TextStyle(fontSize: 22),
-                      ),
-                      title: Text(
-                        religion,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      trailing: isSelected
-                          ? const Icon(Icons.check_circle_rounded,
-                              size: 20, color: AppColors.crimson)
-                          : null,
-                      tileColor:
-                          isSelected ? AppColors.crimsonSurface : null,
-                      onTap: () {
-                        setState(() {
-                          _religion = religion;
-                          _caste = null;
-                        });
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
+            ),
+          ),
+          if (isSaving)
+            const LoadingOverlay(
+              message: 'Saving...',
+              style: LoadingStyle.dots,
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── HEADER ────────────────────────────────────────────
+
+  Widget _buildHeader() {
+    return Container(
+      color: AppColors.crimson,
+      padding: EdgeInsets.fromLTRB(
+        16,
+        MediaQuery.of(context).padding.top + 8,
+        16,
+        12,
+      ),
+      child: Row(children: [
+        GestureDetector(
+          onTap: () => context.go('/setup/step1'),
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color:
+              Colors.white.withOpacity(0.15),
+              borderRadius:
+              BorderRadius.circular(10),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.arrow_back_ios_new,
+                size: 16,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment:
+            CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Step 2 of 5',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white
+                      .withOpacity(0.7),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const Text(
+                'Religion & Community',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
                 ),
               ),
             ],
           ),
-        );
-      },
-    );
-  }
-
-  void _showCastePicker() {
-    final castes = _casteOptions[_religion] ?? ['Other'];
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.white,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.55,
-          minChildSize: 0.4,
-          maxChildSize: 0.85,
-          expand: false,
-          builder: (context, scrollController) {
-            return Column(
-              children: [
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.ivoryDark,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Jaati Chunein',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: AppColors.ivoryDark,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.close,
-                            size: 16,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Divider(height: 1, color: AppColors.border),
-                Expanded(
-                  child: ListView.builder(
-                    controller: scrollController,
-                    itemCount: castes.length,
-                    itemBuilder: (context, index) {
-                      final caste = castes[index];
-                      final isSelected = _caste == caste;
-                      return ListTile(
-                        title: Text(
-                          caste,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                            color: isSelected
-                                ? AppColors.crimson
-                                : AppColors.ink,
-                          ),
-                        ),
-                        trailing: isSelected
-                            ? const Icon(Icons.check_circle_rounded,
-                                size: 20, color: AppColors.crimson)
-                            : null,
-                        tileColor:
-                            isSelected ? AppColors.crimsonSurface : null,
-                        onTap: () {
-                          setState(() => _caste = caste);
-                          Navigator.pop(context);
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showNakshatraPicker() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.white,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.4,
-          maxChildSize: 0.85,
-          expand: false,
-          builder: (context, scrollController) {
-            return Column(
-              children: [
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.ivoryDark,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Nakshatra Chunein',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: AppColors.ivoryDark,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.close,
-                            size: 16,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Divider(height: 1, color: AppColors.border),
-                Expanded(
-                  child: ListView.builder(
-                    controller: scrollController,
-                    itemCount: _nakshatras.length,
-                    itemBuilder: (context, index) {
-                      final nakshatra = _nakshatras[index];
-                      final isSelected = _nakshatra == nakshatra;
-                      return ListTile(
-                        title: Text(
-                          nakshatra,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                            color: isSelected
-                                ? AppColors.crimson
-                                : AppColors.ink,
-                          ),
-                        ),
-                        trailing: isSelected
-                            ? const Icon(Icons.check_circle_rounded,
-                                size: 20, color: AppColors.crimson)
-                            : null,
-                        tileColor:
-                            isSelected ? AppColors.crimsonSurface : null,
-                        onTap: () {
-                          setState(() => _nakshatra = nakshatra);
-                          Navigator.pop(context);
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // ── CONTINUE ──────────────────────────────────────────
-  void _onContinue() {
-    if (_religion == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Dharm zaroori hai')),
-      );
-      return;
-    }
-    if (_caste == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Jaati zaroori hai')),
-      );
-      return;
-    }
-    if (!_formKey.currentState!.validate()) return;
-    context.go('/setup/step3');
-  }
-
-  // ── HELPER WIDGETS ────────────────────────────────────
-  Widget _buildFieldLabel(String label, IconData icon,
-      {bool required = false}) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Icon(icon, size: 16, color: AppColors.crimson),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppColors.inkSoft,
+        ),
+        GestureDetector(
+          onTap: () =>
+              context.go('/setup/step3'),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color:
+              Colors.white.withOpacity(0.15),
+              borderRadius:
+              BorderRadius.circular(100),
+            ),
+            child: Text(
+              'Skip',
+              style: TextStyle(
+                fontSize: 11,
+                color:
+                Colors.white.withOpacity(0.9),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ),
-        if (required) ...[
-          const SizedBox(width: 4),
-          const Text(
-            '*',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: AppColors.error,
+      ]),
+    );
+  }
+
+  // ── PROGRESS BAR ──────────────────────────────────────
+
+  Widget _buildProgressBar() {
+    return Container(
+      color: AppColors.crimson,
+      padding: const EdgeInsets.fromLTRB(
+          16, 0, 16, 12),
+      child: Row(
+        children: List.generate(5, (i) {
+          final isDone = i < 1;
+          final isCurrent = i == 1;
+          return Expanded(
+            child: Container(
+              margin: EdgeInsets.only(
+                  right: i < 4 ? 4 : 0),
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDone
+                    ? Colors.white
+                    : isCurrent
+                    ? Colors.white
+                    .withOpacity(0.9)
+                    : Colors.white
+                    .withOpacity(0.25),
+                borderRadius:
+                BorderRadius.circular(2),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  // ── STEP TITLE ────────────────────────────────────────
+
+  Widget _buildStepTitle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('🛕',
+            style: TextStyle(fontSize: 36)),
+        const SizedBox(height: 10),
+        Text(
+          'Religion & Community',
+          style: AppTextStyles.h3,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'This helps us find the best\nmatches within your community',
+          style: AppTextStyles.bodyMedium
+              .copyWith(color: AppColors.muted),
+        ),
+      ],
+    );
+  }
+
+  // ── FORM FIELDS ───────────────────────────────────────
+
+  Widget _buildReligionField() {
+    return AppDropdownField<String>(
+      label: 'Religion',
+      hint: 'Select your religion',
+      value: _religion,
+      required: true,
+      items: _religions,
+      prefixIcon: Icons.temple_hindu_outlined,
+      validator: Validators.religion,
+      onChanged: (v) {
+        setState(() {
+          _religion = v;
+          // Reset caste when religion changes
+          _caste = null;
+        });
+      },
+    );
+  }
+
+  Widget _buildCasteField() {
+    return Column(
+      children: [
+        AppDropdownField<String>(
+          label: 'Caste',
+          hint: _religion == null
+              ? 'Select religion first'
+              : 'Select your caste',
+          value: _caste,
+          required: true,
+          enabled: _religion != null,
+          items: _availableCastes,
+          prefixIcon: Icons.groups_outlined,
+          validator: Validators.caste,
+          onChanged: (v) =>
+              setState(() => _caste = v),
+        ),
+        // Religion hint
+        if (_religion == null) ...[
+          const SizedBox(height: 6),
+          Row(children: [
+            const Icon(
+              Icons.info_outline_rounded,
+              size: 13,
+              color: AppColors.muted,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Please select religion first',
+              style: AppTextStyles.bodySmall,
+            ),
+          ]),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSubCasteField() {
+    return AppTextField(
+      label: 'Sub Caste',
+      hint: 'e.g. Kanyakubja, Mathur, Deshastha',
+      controller: _subCasteCtrl,
+      prefixIcon: Icons.account_tree_outlined,
+      textCapitalization:
+      TextCapitalization.words,
+      helperText: 'Optional',
+      validator: Validators.subCaste,
+    );
+  }
+
+  Widget _buildGotraField() {
+    return AppTextField(
+      label: 'Gotra',
+      hint: 'e.g. Kashyap, Bharadwaj, Sandilya',
+      controller: _gotraCtrl,
+      prefixIcon: Icons.family_restroom_rounded,
+      textCapitalization:
+      TextCapitalization.words,
+      helperText: 'Optional',
+      validator: Validators.gotra,
+    );
+  }
+
+  Widget _buildManglikField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppDropdownField<String>(
+          label: 'Manglik Status',
+          hint: 'Select your manglik status',
+          value: _manglik,
+          items: const [
+            'no',
+            'yes',
+            'partial',
+            'dont_know',
+          ],
+          itemLabel: (v) {
+            switch (v) {
+              case 'no':
+                return 'Non-Manglik';
+              case 'yes':
+                return 'Manglik';
+              case 'partial':
+                return 'Partial Manglik';
+              case 'dont_know':
+                return "Don't Know";
+              default:
+                return v;
+            }
+          },
+          prefixIcon: Icons.stars_rounded,
+          helperText: 'Optional',
+          onChanged: (v) =>
+              setState(() => _manglik = v),
+        ),
+        // Manglik info note
+        if (_manglik == 'yes' ||
+            _manglik == 'partial') ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.goldSurface,
+              borderRadius:
+              BorderRadius.circular(10),
+              border: Border.all(
+                color: AppColors.gold
+                    .withOpacity(0.3),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 14,
+                  color: AppColors.gold,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'You will be matched with '
+                        'other Manglik profiles '
+                        'for better compatibility.',
+                    style: AppTextStyles
+                        .bodySmall
+                        .copyWith(
+                        color:
+                        AppColors.inkSoft),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -442,519 +588,102 @@ class _Step2ReligionState extends State<Step2Religion> {
     );
   }
 
-  Widget _buildPickerField({
-    required String? value,
-    required String hint,
-    required IconData icon,
-    bool enabled = true,
-  }) {
+  // ── INFO NOTE ─────────────────────────────────────────
+
+  Widget _buildInfoNote() {
     return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: enabled ? AppColors.white : const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(10),
+        color: AppColors.infoSurface,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: value != null
-              ? AppColors.crimson
-              : enabled
-                  ? AppColors.border
-                  : const Color(0xFFEEEEEE),
-          width: 1.5,
+          color: AppColors.info.withOpacity(0.2),
         ),
       ),
       child: Row(
+        crossAxisAlignment:
+        CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            size: 20,
-            color: value != null
-                ? AppColors.crimson
-                : enabled
-                    ? AppColors.muted
-                    : AppColors.disabled,
+          const Icon(
+            Icons.lock_outline_rounded,
+            size: 15,
+            color: AppColors.info,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
-            child: value != null
-                ? Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: AppColors.ink,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  )
-                : Text(
-                    hint,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: enabled
-                          ? AppColors.disabled
-                          : const Color(0xFFBBBBBB),
-                    ),
-                  ),
-          ),
-          Icon(
-            Icons.keyboard_arrow_down_rounded,
-            size: 20,
-            color: enabled ? AppColors.muted : AppColors.disabled,
+            child: Text(
+              'Your religion and caste details '
+                  'are only shared with profiles '
+                  'that match your preferences.',
+              style: AppTextStyles.bodySmall
+                  .copyWith(
+                  color: AppColors.inkSoft),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTopHeader() {
+  // ── BOTTOM BAR ────────────────────────────────────────
+
+  Widget _buildBottomBar(bool isSaving) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+      padding: EdgeInsets.fromLTRB(
+        24,
+        12,
+        24,
+        MediaQuery.of(context).padding.bottom +
+            16,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              GestureDetector(
-                onTap: () => context.go('/setup/step1'),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppColors.ivoryDark,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.arrow_back_ios_new,
-                      size: 16,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                ),
-              ),
-              const Text(
-                'Step 2 of 5',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.muted,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Progress bar — 2 crimson, 3 ivoryDark
-          Row(
-            children: List.generate(5, (index) {
-              return Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 400),
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: index <= 1
-                              ? AppColors.crimson
-                              : AppColors.ivoryDark,
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                      ),
-                    ),
-                    if (index < 4) const SizedBox(width: 4),
-                  ],
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        border: Border(
+          top: BorderSide(
+              color: AppColors.border,
+              width: 1),
+        ),
+        boxShadow: AppColors.modalShadow,
+      ),
+      child: Row(children: [
+        // Progress dots
+        Expanded(
+          child: Row(
+            children: List.generate(5, (i) {
+              final isDone = i < 1;
+              final isCurrent = i == 1;
+              return Container(
+                margin: const EdgeInsets.only(
+                    right: 6),
+                width: isCurrent ? 20 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: (isDone || isCurrent)
+                      ? AppColors.crimson
+                      : AppColors.border,
+                  borderRadius:
+                  BorderRadius.circular(4),
                 ),
               );
             }),
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Religion & Caste',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 3),
-          const Text(
-            'Apni community ki jankari bharein',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.muted,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration({
-    required String hintText,
-    required IconData prefixIcon,
-  }) {
-    return InputDecoration(
-      hintText: hintText,
-      hintStyle: const TextStyle(color: AppColors.disabled, fontSize: 15),
-      prefixIcon: Icon(prefixIcon, size: 20, color: AppColors.muted),
-      filled: true,
-      fillColor: AppColors.white,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.border, width: 1.5),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.border, width: 1.5),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide:
-            const BorderSide(color: AppColors.crimson, width: 1.5),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.error, width: 1.5),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: AppColors.error, width: 1.5),
-      ),
-    );
-  }
-
-  // ── BUILD ─────────────────────────────────────────────
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.ivory,
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24)
-                    .copyWith(bottom: 32),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 24),
-
-                      // ── FIELD 1: Religion ─────────────
-                      _buildFieldLabel(
-                        'Dharm (Religion)',
-                        Icons.temple_hindu_outlined,
-                        required: true,
-                      ),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: _showReligionPicker,
-                        child: _buildPickerField(
-                          value: _religion,
-                          hint: 'Apna dharm chunein',
-                          icon: Icons.temple_hindu_outlined,
-                        ),
-                      ),
-
-                      // ── FIELD 2: Caste ────────────────
-                      const SizedBox(height: 20),
-                      _buildFieldLabel(
-                        'Jaati (Caste)',
-                        Icons.people_outline_rounded,
-                        required: true,
-                      ),
-                      if (_religion == null) ...[
-                        const SizedBox(height: 4),
-                        const Text(
-                          '(Religion chunne ke baad options aayenge)',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.muted,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () {
-                          if (_religion == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Pehle religion chunein'),
-                              ),
-                            );
-                          } else {
-                            _showCastePicker();
-                          }
-                        },
-                        child: _buildPickerField(
-                          value: _caste,
-                          hint: 'Apni jaati chunein',
-                          icon: Icons.people_outline_rounded,
-                          enabled: _religion != null,
-                        ),
-                      ),
-
-                      // ── FIELD 3: Sub-caste ────────────
-                      const SizedBox(height: 20),
-                      _buildFieldLabel(
-                        'Upjaati (Sub-caste)',
-                        Icons.account_tree_outlined,
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        '(Optional)',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _subCasteController,
-                        textCapitalization: TextCapitalization.words,
-                        textInputAction: TextInputAction.next,
-                        decoration: _inputDecoration(
-                          hintText: 'Jaise: Saraswat, Iyer, Khatri...',
-                          prefixIcon: Icons.account_tree_outlined,
-                        ),
-                      ),
-
-                      // ── FIELD 4: Gotra ────────────────
-                      const SizedBox(height: 20),
-                      _buildFieldLabel(
-                        'Gotra',
-                        Icons.family_restroom_outlined,
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        '(Optional — mainly Hindu/Sikh ke liye)',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _gotraController,
-                        textCapitalization: TextCapitalization.words,
-                        textInputAction: TextInputAction.next,
-                        decoration: _inputDecoration(
-                          hintText: 'Jaise: Kashyap, Bharadwaj, Atri...',
-                          prefixIcon: Icons.family_restroom_outlined,
-                        ),
-                      ),
-
-                      // ── FIELD 5: Manglik ──────────────
-                      const SizedBox(height: 20),
-                      _buildFieldLabel(
-                        'Manglik',
-                        Icons.stars_outlined,
-                        required: true,
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Kundali/horoscope se pata karo',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: List.generate(_manglikOptions.length,
-                            (index) {
-                          final opt = _manglikOptions[index];
-                          final isSelected = _manglik == opt['value'];
-                          final isLast =
-                              index == _manglikOptions.length - 1;
-                          return Expanded(
-                            child: Padding(
-                              padding:
-                                  EdgeInsets.only(right: isLast ? 0 : 10),
-                              child: GestureDetector(
-                                onTap: () => setState(
-                                    () => _manglik = opt['value']!),
-                                child: AnimatedContainer(
-                                  duration:
-                                      const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? AppColors.crimson
-                                        : AppColors.white,
-                                    borderRadius:
-                                        BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? AppColors.crimson
-                                          : AppColors.border,
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        opt['emoji']!,
-                                        style: const TextStyle(
-                                            fontSize: 18),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        opt['label']!,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: isSelected
-                                              ? AppColors.white
-                                              : AppColors.inkSoft,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-
-                      // ── FIELD 6: Nakshatra ────────────
-                      const SizedBox(height: 20),
-                      _buildFieldLabel(
-                        'Nakshatra / Star',
-                        Icons.star_outline_rounded,
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        '(Optional)',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: _showNakshatraPicker,
-                        child: _buildPickerField(
-                          value: _nakshatra,
-                          hint: 'Apna nakshatra chunein (optional)',
-                          icon: Icons.star_outline_rounded,
-                        ),
-                      ),
-
-                      // ── INFO BOX ──────────────────────
-                      const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.infoSurface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color:
-                                AppColors.info.withValues(alpha: 0.20),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(
-                              Icons.privacy_tip_outlined,
-                              size: 18,
-                              color: AppColors.info,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Yeh information private hai',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.info,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Sirf connected members hi aapki caste details dekh sakte hain',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.info
-                                          .withValues(alpha: 0.80),
-                                      height: 1.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // ── CONTINUE BUTTON ───────────────
-                      const SizedBox(height: 32),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: _onContinue,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.crimson,
-                            foregroundColor: AppColors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Aage Badho',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.white,
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              Icon(Icons.arrow_forward_rounded,
-                                  size: 18, color: AppColors.white),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
-      ),
+        const SizedBox(width: 16),
+        // Next button
+        SizedBox(
+          width: 140,
+          height: 48,
+          child: PrimaryButton(
+            label:
+            isSaving ? 'Saving...' : 'Next',
+            icon: isSaving
+                ? null
+                : Icons.arrow_forward_rounded,
+            isLoading: isSaving,
+            onPressed: isSaving ? null : _next,
+          ),
+        ),
+      ]),
     );
   }
 }

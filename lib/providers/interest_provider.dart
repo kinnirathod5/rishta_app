@@ -1,24 +1,31 @@
 // lib/providers/interest_provider.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../data/models/interest_model.dart';
-import '../data/models/connection_model.dart';
-import '../data/repositories/interest_repository.dart';
-import 'auth_provider.dart';
+import 'package:rishta_app/data/models/interest_model.dart';
+import 'package:rishta_app/data/models/connection_model.dart';
+import 'package:rishta_app/data/repositories/interest_repository.dart';
+import 'package:rishta_app/providers/auth_provider.dart';
+import 'package:rishta_app/providers/profile_provider.dart';
 
-// ── REPOSITORY PROVIDER ───────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// REPOSITORY PROVIDER
+// ─────────────────────────────────────────────────────────
+
 final interestRepositoryProvider =
 Provider<InterestRepository>(
       (ref) => InterestRepository(),
 );
 
-// ── INTERESTS STATE ───────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// INTERESTS STATE
+// ─────────────────────────────────────────────────────────
+
 class InterestsState {
   final List<InterestModel> received;
   final List<InterestModel> sent;
   final List<ConnectionModel> connections;
   final bool isLoading;
-  final bool isSending;
+  final bool isActing;   // Accept/Decline ho raha
   final String? error;
   final String? successMessage;
 
@@ -27,7 +34,7 @@ class InterestsState {
     this.sent = const [],
     this.connections = const [],
     this.isLoading = false,
-    this.isSending = false,
+    this.isActing = false,
     this.error,
     this.successMessage,
   });
@@ -37,264 +44,466 @@ class InterestsState {
     List<InterestModel>? sent,
     List<ConnectionModel>? connections,
     bool? isLoading,
-    bool? isSending,
+    bool? isActing,
     String? error,
     String? successMessage,
+    bool clearError = false,
+    bool clearSuccess = false,
   }) {
     return InterestsState(
       received: received ?? this.received,
       sent: sent ?? this.sent,
       connections: connections ?? this.connections,
       isLoading: isLoading ?? this.isLoading,
-      isSending: isSending ?? this.isSending,
-      error: error,
-      successMessage: successMessage,
+      isActing: isActing ?? this.isActing,
+      error: clearError
+          ? null
+          : error ?? this.error,
+      successMessage: clearSuccess
+          ? null
+          : successMessage ?? this.successMessage,
     );
   }
 
-  // ── COMPUTED PROPERTIES ───────────────────────────
-  List<InterestModel> get pendingReceived => received
-      .where((i) => i.status == InterestStatus.pending)
-      .toList();
+  // ── COMPUTED ──────────────────────────────────────────
 
-  List<InterestModel> get pendingSent => sent
-      .where((i) => i.status == InterestStatus.pending)
-      .toList();
+  /// Pending received interests
+  List<InterestModel> get pendingReceived =>
+      received
+          .where((i) => i.isPending)
+          .toList();
 
-  List<InterestModel> get acceptedSent => sent
-      .where((i) => i.status == InterestStatus.accepted)
-      .toList();
+  /// Accepted received interests
+  List<InterestModel> get acceptedReceived =>
+      received
+          .where((i) => i.isAccepted)
+          .toList();
 
-  List<InterestModel> get declinedSent => sent
-      .where((i) => i.status == InterestStatus.declined)
-      .toList();
+  /// Pending sent interests
+  List<InterestModel> get pendingSent =>
+      sent.where((i) => i.isPending).toList();
 
-  int get pendingReceivedCount => pendingReceived.length;
-  int get connectionsCount => connections.length;
+  /// Accepted sent interests
+  List<InterestModel> get acceptedSent =>
+      sent.where((i) => i.isAccepted).toList();
 
-  bool get hasActivity =>
-      received.isNotEmpty ||
-          sent.isNotEmpty ||
-          connections.isNotEmpty;
-}
+  /// Declined sent interests
+  List<InterestModel> get declinedSent =>
+      sent.where((i) => i.isDeclined).toList();
 
-// ── INTERESTS NOTIFIER ────────────────────────────────────
-class InterestsNotifier extends StateNotifier<InterestsState> {
-  final InterestRepository _repo;
-  final String? _userId;
+  /// Total pending count (for tab badge)
+  int get pendingCount => pendingReceived.length;
 
-  InterestsNotifier(this._repo, this._userId)
-      : super(const InterestsState()) {
-    if (_userId != null) loadAll();
+  /// Total connections count
+  int get connectionCount => connections.length;
+
+  bool get hasError =>
+      error != null && error!.isNotEmpty;
+
+  bool get hasSuccess =>
+      successMessage != null &&
+          successMessage!.isNotEmpty;
+
+  bool get isEmpty =>
+      received.isEmpty &&
+          sent.isEmpty &&
+          connections.isEmpty;
+
+  bool get hasConnections => connections.isNotEmpty;
+
+  /// Check if already sent interest to a profile
+  bool hasSentTo(String receiverProfileId) =>
+      sent.any((i) =>
+      i.receiverProfileId == receiverProfileId &&
+          i.isPending);
+
+  /// Check if connected with a user
+  bool isConnectedWith(String uid) =>
+      connections.any((c) =>
+      c.userIds.contains(uid) && c.isConnected);
+
+  /// Get interest received from a user
+  InterestModel? getReceivedFrom(
+      String senderUid) {
+    try {
+      return received.firstWhere(
+              (i) => i.senderId == senderUid);
+    } catch (_) {
+      return null;
+    }
   }
 
-  // ── LOAD ALL ──────────────────────────────────────
-  Future<void> loadAll() async {
-    if (_userId == null) return;
-    state = state.copyWith(isLoading: true, error: null);
+  /// Get connection with a user
+  ConnectionModel? getConnectionWith(
+      String uid) {
+    try {
+      return connections.firstWhere(
+              (c) => c.userIds.contains(uid));
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// INTERESTS NOTIFIER
+// ─────────────────────────────────────────────────────────
+
+class InterestsNotifier
+    extends StateNotifier<InterestsState> {
+  final InterestRepository _repo;
+  final String? _uid;
+  final String? _profileId;
+
+  InterestsNotifier(
+      this._repo,
+      this._uid,
+      this._profileId,
+      ) : super(const InterestsState()) {
+    if (_uid != null) _load();
+  }
+
+  // ── LOAD ──────────────────────────────────────────────
+
+  Future<void> _load() async {
+    if (_uid == null) return;
+
+    state = state.copyWith(
+      isLoading: true,
+      clearError: true,
+    );
 
     try {
-      final received =
-      await _repo.getReceivedInterests(_userId!);
-      final sent =
-      await _repo.getSentInterests(_userId!);
-      final connections =
-      await _repo.getConnections(_userId!);
+      // Load all in parallel
+      final results = await Future.wait([
+        _repo.getReceivedInterests(uid: _uid!),
+        _repo.getSentInterests(uid: _uid!),
+        _repo.getConnections(_uid!),
+      ]);
 
       state = state.copyWith(
-        received: received,
-        sent: sent,
-        connections: connections,
+        received: results[0] as List<InterestModel>,
+        sent: results[1] as List<InterestModel>,
+        connections:
+        results[2] as List<ConnectionModel>,
         isLoading: false,
+        clearError: true,
       );
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: e.toString(),
+        error: 'Failed to load interests.',
       );
     }
   }
 
-  // ── SEND INTEREST ─────────────────────────────────
-  Future<bool> sendInterest({
-    required String fromProfileId,
-    required String toUserId,
-    required String toProfileId,
-  }) async {
-    if (_userId == null) return false;
+  // ── SEND INTEREST ─────────────────────────────────────
 
-    state = state.copyWith(isSending: true, error: null);
+  Future<bool> sendInterest({
+    required String receiverId,
+    required String receiverProfileId,
+    String? message,
+  }) async {
+    if (_uid == null || _profileId == null) {
+      return false;
+    }
+
+    state = state.copyWith(
+      isActing: true,
+      clearError: true,
+    );
 
     try {
-      // Pehle check karo already bheja toh nahi
-      final alreadySent =
-      await _repo.hasAlreadySentInterest(
-        fromUserId: _userId!,
-        toUserId: toUserId,
+      final interest = await _repo.sendInterest(
+        senderId: _uid!,
+        receiverId: receiverId,
+        senderProfileId: _profileId!,
+        receiverProfileId: receiverProfileId,
+        message: message,
       );
 
-      if (alreadySent) {
-        state = state.copyWith(
-          isSending: false,
-          error: 'Pehle se interest bheja hua hai',
-        );
-        return false;
-      }
-
-      final interestId = await _repo.sendInterest(
-        fromUserId: _userId!,
-        fromProfileId: fromProfileId,
-        toUserId: toUserId,
-        toProfileId: toProfileId,
-      );
-
-      // Local state update
-      final newInterest = InterestModel(
-        id: interestId,
-        fromUserId: _userId!,
-        fromProfileId: fromProfileId,
-        toUserId: toUserId,
-        toProfileId: toProfileId,
-        sentAt: DateTime.now(),
-      );
-
+      // Add to sent list
       state = state.copyWith(
-        sent: [...state.sent, newInterest],
-        isSending: false,
-        successMessage: 'Interest bhej diya! 💌',
+        sent: [interest, ...state.sent],
+        isActing: false,
+        successMessage: 'Interest sent! 💌',
+        clearError: true,
       );
-
       return true;
+    } on InterestException catch (e) {
+      state = state.copyWith(
+        isActing: false,
+        error: e.message,
+      );
+      return false;
     } catch (e) {
       state = state.copyWith(
-        isSending: false,
-        error: e.toString(),
+        isActing: false,
+        error: 'Failed to send interest.',
       );
       return false;
     }
   }
 
-  // ── ACCEPT INTEREST ───────────────────────────────
-  Future<void> acceptInterest(
-      String interestId, InterestModel interest) async {
-    try {
-      await _repo.respondToInterest(
-        interestId,
-        InterestStatus.accepted,
-        currentUserId: _userId ?? '',
-        interest: interest,
-      );
+  // ── ACCEPT INTEREST ───────────────────────────────────
 
-      // Local: received se hata ke connections mein daalo
-      final accepted = state.received
-          .firstWhere((i) => i.id == interestId);
+  Future<bool> acceptInterest(
+      String interestId) async {
+    if (_uid == null) return false;
 
-      // Mock connection banao
-      final connection = ConnectionModel(
-        id: 'conn_${DateTime.now().millisecondsSinceEpoch}',
-        user1Id: accepted.fromUserId,
-        profile1Id: accepted.fromProfileId,
-        user2Id: accepted.toUserId,
-        profile2Id: accepted.toProfileId,
-        interestId: interestId,
-        connectedAt: DateTime.now(),
-      );
-
-      state = state.copyWith(
-        received: state.received
-            .where((i) => i.id != interestId)
-            .toList(),
-        connections: [...state.connections, connection],
-        successMessage: 'Interest accept kar liya! 🎉',
-      );
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
-    }
-  }
-
-  // ── DECLINE INTEREST ──────────────────────────────
-  Future<void> declineInterest(String interestId,
-      InterestModel interest) async {
-    try {
-      await _repo.respondToInterest(
-        interestId,
-        InterestStatus.declined,
-        currentUserId: _userId ?? '',
-        interest: interest,
-      );
-
-      // Local: received se remove karo
-      state = state.copyWith(
-        received: state.received
-            .where((i) => i.id != interestId)
-            .toList(),
-      );
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
-    }
-  }
-
-  // ── WITHDRAW INTEREST ─────────────────────────────
-  Future<void> withdrawInterest(String interestId) async {
-    try {
-      await _repo.withdrawInterest(interestId);
-
-      state = state.copyWith(
-        sent: state.sent.map((i) {
-          if (i.id == interestId) {
-            return i.copyWith(
-                status: InterestStatus.withdrawn);
-          }
-          return i;
-        }).toList(),
-      );
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
-    }
-  }
-
-  // ── CLEAR MESSAGES ────────────────────────────────
-  void clearMessages() {
     state = state.copyWith(
-      error: null,
-      successMessage: null,
+      isActing: true,
+      clearError: true,
     );
+
+    try {
+      final result = await _repo.respondToInterest(
+        interestId: interestId,
+        accept: true,
+        responderUid: _uid!,
+      );
+
+      // Update received list
+      final updatedReceived =
+      state.received.map((i) =>
+      i.id == interestId
+          ? result.interest
+          : i).toList();
+
+      // Add new connection if created
+      final updatedConnections =
+      List<ConnectionModel>.from(
+          state.connections);
+      if (result.connection != null) {
+        updatedConnections
+            .insert(0, result.connection!);
+      }
+
+      state = state.copyWith(
+        received: updatedReceived,
+        connections: updatedConnections,
+        isActing: false,
+        successMessage:
+        'Interest accepted! You are now connected 🎉',
+        clearError: true,
+      );
+      return true;
+    } on InterestException catch (e) {
+      state = state.copyWith(
+        isActing: false,
+        error: e.message,
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        isActing: false,
+        error: 'Failed to accept interest.',
+      );
+      return false;
+    }
   }
 
-  // ── REFRESH ───────────────────────────────────────
-  Future<void> refresh() async {
-    await loadAll();
+  // ── DECLINE INTEREST ──────────────────────────────────
+
+  Future<bool> declineInterest(
+      String interestId) async {
+    if (_uid == null) return false;
+
+    state = state.copyWith(
+      isActing: true,
+      clearError: true,
+    );
+
+    try {
+      final result = await _repo.respondToInterest(
+        interestId: interestId,
+        accept: false,
+        responderUid: _uid!,
+      );
+
+      final updatedReceived =
+      state.received.map((i) =>
+      i.id == interestId
+          ? result.interest
+          : i).toList();
+
+      state = state.copyWith(
+        received: updatedReceived,
+        isActing: false,
+        clearError: true,
+      );
+      return true;
+    } on InterestException catch (e) {
+      state = state.copyWith(
+        isActing: false,
+        error: e.message,
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        isActing: false,
+        error: 'Failed to decline interest.',
+      );
+      return false;
+    }
   }
+
+  // ── WITHDRAW INTEREST ─────────────────────────────────
+
+  Future<bool> withdrawInterest(
+      String interestId) async {
+    if (_uid == null) return false;
+
+    state = state.copyWith(
+      isActing: true,
+      clearError: true,
+    );
+
+    try {
+      final withdrawn =
+      await _repo.withdrawInterest(
+        interestId: interestId,
+        senderUid: _uid!,
+      );
+
+      // Remove from sent list
+      final updatedSent = state.sent
+          .where((i) => i.id != interestId)
+          .toList();
+
+      state = state.copyWith(
+        sent: updatedSent,
+        isActing: false,
+        successMessage: 'Interest withdrawn',
+        clearError: true,
+      );
+      return true;
+    } on InterestException catch (e) {
+      state = state.copyWith(
+        isActing: false,
+        error: e.message,
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        isActing: false,
+        error: 'Failed to withdraw interest.',
+      );
+      return false;
+    }
+  }
+
+  // ── CLEAR MESSAGES ────────────────────────────────────
+
+  void clearError() =>
+      state = state.copyWith(clearError: true);
+
+  void clearSuccess() =>
+      state = state.copyWith(clearSuccess: true);
+
+  void clearMessages() => state = state.copyWith(
+      clearError: true, clearSuccess: true);
+
+  // ── REFRESH ───────────────────────────────────────────
+
+  Future<void> refresh() => _load();
 }
 
-// ── PROVIDER ─────────────────────────────────────────────
-final interestsProvider =
-StateNotifierProvider<InterestsNotifier, InterestsState>(
-      (ref) {
-    final userId = ref.watch(currentUidProvider);
-    return InterestsNotifier(
-      ref.read(interestRepositoryProvider),
-      userId,
-    );
-  },
-);
+// ─────────────────────────────────────────────────────────
+// INTERESTS PROVIDER
+// ─────────────────────────────────────────────────────────
 
-// ── CONVENIENCE PROVIDERS ─────────────────────────────────
-
-/// Pending interests ki count (badge ke liye)
-final pendingInterestsCountProvider = Provider<int>((ref) {
-  return ref.watch(interestsProvider).pendingReceivedCount;
+final interestsProvider = StateNotifierProvider<
+    InterestsNotifier, InterestsState>((ref) {
+  final uid = ref.watch(currentUidProvider);
+  final profileId =
+      ref.watch(currentProfileProvider)?.id;
+  return InterestsNotifier(
+    ref.read(interestRepositoryProvider),
+    uid,
+    profileId,
+  );
 });
 
-/// Connections ki count
-final connectionsCountProvider = Provider<int>((ref) {
-  return ref.watch(interestsProvider).connectionsCount;
+// ─────────────────────────────────────────────────────────
+// CONVENIENCE PROVIDERS
+// ─────────────────────────────────────────────────────────
+
+/// Pending received interests count (tab badge)
+final pendingInterestsCountProvider =
+Provider<int>((ref) {
+  return ref
+      .watch(interestsProvider)
+      .pendingCount;
 });
 
-/// Sent interest ids (home screen mein button state ke liye)
-final sentInterestIdsProvider = Provider<Set<String>>((ref) {
-  final interests = ref.watch(interestsProvider);
-  return interests.sent
-      .map((i) => i.toProfileId)
+/// All pending received interests
+final pendingReceivedProvider =
+Provider<List<InterestModel>>((ref) {
+  return ref
+      .watch(interestsProvider)
+      .pendingReceived;
+});
+
+/// All sent interests
+final sentInterestsProvider =
+Provider<List<InterestModel>>((ref) {
+  return ref.watch(interestsProvider).sent;
+});
+
+/// All connections
+final connectionsProvider =
+Provider<List<ConnectionModel>>((ref) {
+  return ref
+      .watch(interestsProvider)
+      .connections;
+});
+
+/// Set of profile IDs user has sent interest to
+/// Used to show "Interest Sent" state on cards
+final sentInterestIdsProvider =
+Provider<Set<String>>((ref) {
+  return ref
+      .watch(interestsProvider)
+      .sent
+      .where((i) => i.isPending)
+      .map((i) => i.receiverProfileId)
       .toSet();
+});
+
+/// Is user connected with a specific uid
+final isConnectedWithProvider =
+Provider.family<bool, String>((ref, uid) {
+  return ref
+      .watch(interestsProvider)
+      .isConnectedWith(uid);
+});
+
+/// Has user sent interest to a specific profile
+final hasSentInterestProvider =
+Provider.family<bool, String>(
+        (ref, profileId) {
+      return ref
+          .watch(interestsProvider)
+          .hasSentTo(profileId);
+    });
+
+/// Total connections count
+final connectionCountProvider =
+Provider<int>((ref) {
+  return ref
+      .watch(interestsProvider)
+      .connectionCount;
+});
+
+/// Is interests section loading
+final interestsLoadingProvider =
+Provider<bool>((ref) {
+  return ref.watch(interestsProvider).isLoading;
+});
+
+/// Is an action (accept/decline) in progress
+final interestActingProvider =
+Provider<bool>((ref) {
+  return ref.watch(interestsProvider).isActing;
 });

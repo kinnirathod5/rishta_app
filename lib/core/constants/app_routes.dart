@@ -1,371 +1,579 @@
+// lib/core/constants/app_routes.dart
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:rishta_app/core/constants/app_colors.dart';
+import 'package:rishta_app/core/constants/app_text_styles.dart';
 
-import '../../presentation/placeholder_screens.dart';
-import '../../presentation/auth/welcome_screen.dart';
-import '../../presentation/profile/my_profile_screen.dart';
-import '../../presentation/settings/notifications_screen.dart';
-import '../../presentation/settings/premium_screen.dart';
-import '../../presentation/settings/privacy_screen.dart';
-import '../../presentation/auth/phone_entry_screen.dart';
-import '../../presentation/auth/otp_screen.dart';
-import '../../presentation/auth/explore_first_screen.dart';
-import '../../presentation/auth/profile_type_screen.dart';
-import '../../presentation/auth/profile_setup/step1_basic_info.dart';
-import '../../presentation/auth/profile_setup/step2_religion.dart';
-import '../../presentation/auth/profile_setup/step3_education.dart';
-import '../../presentation/auth/profile_setup/step4_family.dart';
-import '../../presentation/auth/profile_setup/step5_photos.dart';
-import '../../presentation/home/home_screen.dart';
-import '../../presentation/home/search_screen.dart';
-import '../../presentation/home/profile_detail_screen.dart';
-import '../../presentation/interests/interests_screen.dart';
-import '../../presentation/chat/chat_inbox_screen.dart';
-import '../../presentation/chat/chat_window_screen.dart';
-import '../../presentation/profile/shortlisted_screen.dart';
-import '../../presentation/profile/who_viewed_screen.dart';
-import '../../presentation/profile/partner_preference_screen.dart';
-import '../../presentation/profile/horoscope_screen.dart';
-import '../../presentation/profile/id_verification_screen.dart';
-import '../../presentation/profile/blocked_users_screen.dart';
-import '../../presentation/profile/profile_preview_screen.dart';
-import '../../presentation/settings/help_support_screen.dart';
-import '../../presentation/settings/delete_account_screen.dart';
-import '../../presentation/shell/main_shell.dart';
+// ── AUTH ──────────────────────────────────────────────────
+import 'package:rishta_app/presentation/auth/splash_screen.dart';
+import 'package:rishta_app/presentation/auth/welcome_screen.dart';
+import 'package:rishta_app/presentation/auth/phone_entry_screen.dart';
+import 'package:rishta_app/presentation/auth/otp_screen.dart';
+import 'package:rishta_app/presentation/auth/explore_first_screen.dart';
+import 'package:rishta_app/presentation/auth/profile_type_screen.dart';
 
-// ── ROUTE PATHS ───────────────────────────────────────────
-class AppRoutePaths {
-  AppRoutePaths._();
+// ── PROFILE SETUP STEPS ───────────────────────────────────
+import 'package:rishta_app/presentation/auth/profile_setup/step1_basic_info.dart';
+import 'package:rishta_app/presentation/auth/profile_setup/step2_religion.dart';
+import 'package:rishta_app/presentation/auth/profile_setup/step3_education.dart';
+import 'package:rishta_app/presentation/auth/profile_setup/step4_family.dart';
+import 'package:rishta_app/presentation/auth/profile_setup/step5_photos.dart';
 
-  static const String splash = '/';
-  static const String welcome = '/welcome';
-  static const String phone = '/phone';
-  static const String otp = '/otp';
-  static const String explore = '/explore';
+// ── SHELL ─────────────────────────────────────────────────
+import 'package:rishta_app/presentation/shell/main_shell.dart';
+
+// ── MAIN APP ──────────────────────────────────────────────
+import 'package:rishta_app/presentation/home/home_screen.dart';
+import 'package:rishta_app/presentation/home/search_screen.dart';
+import 'package:rishta_app/presentation/home/profile_detail_screen.dart';
+import 'package:rishta_app/presentation/profile/my_profile_screen.dart';
+import 'package:rishta_app/presentation/profile/profile_preview_screen.dart';
+import 'package:rishta_app/presentation/profile/edit_profile_screen.dart';
+import 'package:rishta_app/presentation/chat/chat_inbox_screen.dart';
+import 'package:rishta_app/presentation/chat/chat_window_screen.dart';
+
+// ── PLACEHOLDER SCREENS ───────────────────────────────────
+// These will be replaced one by one with full implementations
+import 'package:rishta_app/presentation/placeholder_screens.dart';
+
+// ─────────────────────────────────────────────────────────
+// ROUTE PATHS
+// Single source of truth for all route strings
+// ─────────────────────────────────────────────────────────
+
+abstract class AppRoute {
+  AppRoute._();
+
+  // ── AUTH ──────────────────────────────────────────
+  static const String splash      = '/';
+  static const String welcome     = '/welcome';
+  static const String phone       = '/phone';
+  static const String otp         = '/otp';
+  static const String explore     = '/explore';
   static const String profileType = '/profile-type';
 
-  // Profile Setup
-  static const String setupStep1 = '/setup/step1';
-  static const String setupStep2 = '/setup/step2';
-  static const String setupStep3 = '/setup/step3';
-  static const String setupStep4 = '/setup/step4';
-  static const String setupStep5 = '/setup/step5';
+  // ── PROFILE SETUP ─────────────────────────────────
+  static const String step1 = '/setup/step1';
+  static const String step2 = '/setup/step2';
+  static const String step3 = '/setup/step3';
+  static const String step4 = '/setup/step4';
+  static const String step5 = '/setup/step5';
 
-  // Main App
-  static const String home = '/home';
-  static const String search = '/search';
-  static const String profileDetail = '/profile/:uid';
+  // ── SHELL TABS ────────────────────────────────────
+  static const String home      = '/home';
+  static const String search    = '/search';
   static const String interests = '/interests';
-  static const String chatInbox = '/chat';
-  static const String chatWindow = '/chat/:chatId';
+  static const String chat      = '/chat';
   static const String myProfile = '/my-profile';
-  static const String notifications = '/notifications';
-  static const String premium = '/premium';
-  static const String privacy = '/privacy';
-  static const String shortlisted = '/shortlisted';
-  static const String whoViewed = '/who-viewed';
-  static const String partnerPreference = '/partner-preference';
-  static const String horoscope = '/horoscope';
-  static const String idVerification = '/id-verification';
-  static const String blockedUsers = '/blocked-users';
-  static const String helpSupport = '/help-support';
-  static const String deleteAccount = '/delete-account';
+
+  // ── PROFILE ───────────────────────────────────────
+  static const String profileDetail  = '/profile/:uid';
   static const String profilePreview = '/profile-preview';
+  static const String editProfile    = '/edit-profile';
+  static const String shortlisted    = '/shortlisted';
+  static const String whoViewed      = '/who-viewed';
+  static const String partnerPref    = '/partner-preference';
+  static const String horoscope      = '/horoscope';
+  static const String idVerification = '/id-verification';
+  static const String blockedUsers   = '/blocked-users';
+
+  // ── CHAT ──────────────────────────────────────────
+  static const String chatWindow = '/chat/:chatId';
+
+  // ── SETTINGS ──────────────────────────────────────
+  static const String notifications = '/notifications';
+  static const String premium       = '/premium';
+  static const String privacy       = '/privacy';
+  static const String helpSupport   = '/help-support';
+  static const String deleteAccount = '/delete-account';
+
+  // ── PATH HELPERS ──────────────────────────────────
+
+  /// '/profile/abc123'
+  static String profileDetailPath(String uid) =>
+      '/profile/$uid';
+
+  /// '/chat/chatId123'
+  static String chatWindowPath(String chatId) =>
+      '/chat/$chatId';
 }
 
-// ── ROUTER ────────────────────────────────────────────────
-class AppRoutes {
+// ─────────────────────────────────────────────────────────
+// ROUTER
+// ─────────────────────────────────────────────────────────
+
+abstract class AppRoutes {
   AppRoutes._();
 
   static final GoRouter router = GoRouter(
-    initialLocation: AppRoutePaths.splash,
-    debugLogDiagnostics: true,
+    initialLocation: AppRoute.splash,
+    debugLogDiagnostics: false,
 
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('🚧', style: TextStyle(fontSize: 48)),
-            const SizedBox(height: 16),
-            Text('Page nahi mila: ${state.uri}'),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => context.go(AppRoutePaths.splash),
-              child: const Text('Home pe jaao'),
-            ),
-          ],
-        ),
-      ),
-    ),
+    // ── REDIRECT ──────────────────────────────────
+    // TODO: Phase 3 — Firebase auth redirect
+    // redirect: (context, state) {
+    //   final container =
+    //       ProviderScope.containerOf(context);
+    //   final isLoggedIn =
+    //       container.read(isLoggedInProvider);
+    //   final authRoutes = [
+    //     AppRoute.welcome, AppRoute.phone,
+    //     AppRoute.otp,     AppRoute.explore,
+    //   ];
+    //   final isAuthRoute = authRoutes.any(
+    //       (r) => state.uri.path.startsWith(r));
+    //   if (!isLoggedIn && !isAuthRoute) {
+    //     return AppRoute.welcome;
+    //   }
+    //   return null;
+    // },
 
     routes: [
-      // ── AUTH ─────────────────────────────────────
+
+      // ── SPLASH ──────────────────────────────────
       GoRoute(
-        path: AppRoutePaths.splash,
+        path: AppRoute.splash,
         name: 'splash',
-        builder: (context, state) => const SplashPlaceholder(),
+        pageBuilder: (context, state) =>
+            _fade(state, const SplashScreen()),
       ),
+
+      // ── WELCOME ─────────────────────────────────
       GoRoute(
-        path: AppRoutePaths.welcome,
+        path: AppRoute.welcome,
         name: 'welcome',
-        pageBuilder: (context, state) => _fade(
-          state, const WelcomeScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _fade(state, const WelcomeScreen()),
       ),
+
+      // ── PHONE ───────────────────────────────────
       GoRoute(
-        path: AppRoutePaths.phone,
+        path: AppRoute.phone,
         name: 'phone',
-        pageBuilder: (context, state) => _slide(
-          state, const PhoneEntryScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const PhoneEntryScreen()),
       ),
+
+      // ── OTP ─────────────────────────────────────
       GoRoute(
-        path: AppRoutePaths.otp,
+        path: AppRoute.otp,
         name: 'otp',
         pageBuilder: (context, state) {
-          final phone = state.extra as String? ?? '';
-          return _slide(state, OtpScreen(phoneNumber: phone));
+          final phone =
+              state.extra as String? ?? '';
+          return _slide(
+            state,
+            OtpScreen(phoneNumber: phone),
+          );
         },
       ),
+
+      // ── EXPLORE FIRST ───────────────────────────
       GoRoute(
-        path: AppRoutePaths.explore,
+        path: AppRoute.explore,
         name: 'explore',
-        pageBuilder: (context, state) => _slide(
-          state, const ExploreFirstScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const ExploreFirstScreen()),
       ),
+
+      // ── PROFILE TYPE ────────────────────────────
       GoRoute(
-        path: AppRoutePaths.profileType,
+        path: AppRoute.profileType,
         name: 'profileType',
-        pageBuilder: (context, state) => _slide(
-          state, const ProfileTypeScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const ProfileTypeScreen()),
       ),
 
-      // ── PROFILE SETUP ────────────────────────────
+      // ── PROFILE SETUP — Step 1 ──────────────────
       GoRoute(
-        path: AppRoutePaths.setupStep1,
-        name: 'setupStep1',
-        pageBuilder: (context, state) => _slide(
-          state, const Step1BasicInfo(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutePaths.setupStep2,
-        name: 'setupStep2',
-        pageBuilder: (context, state) => _slide(
-          state, const Step2Religion(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutePaths.setupStep3,
-        name: 'setupStep3',
-        pageBuilder: (context, state) => _slide(
-          state, const Step3Education(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutePaths.setupStep4,
-        name: 'setupStep4',
-        pageBuilder: (context, state) => _slide(
-          state, const Step4Family(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutePaths.setupStep5,
-        name: 'setupStep5',
-        pageBuilder: (context, state) => _slide(
-          state, const Step5Photos(),
-        ),
+        path: AppRoute.step1,
+        name: 'step1',
+        pageBuilder: (context, state) {
+          final extra = state.extra
+          as Map<String, dynamic>?;
+          return _slide(
+            state,
+            Step1BasicInfo(extra: extra),
+          );
+        },
       ),
 
-      // ── MAIN APP (Shell — persistent bottom nav) ──
+      // ── PROFILE SETUP — Step 2 ──────────────────
+      GoRoute(
+        path: AppRoute.step2,
+        name: 'step2',
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const Step2Religion()),
+      ),
+
+      // ── PROFILE SETUP — Step 3 ──────────────────
+      GoRoute(
+        path: AppRoute.step3,
+        name: 'step3',
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const Step3Education()),
+      ),
+
+      // ── PROFILE SETUP — Step 4 ──────────────────
+      GoRoute(
+        path: AppRoute.step4,
+        name: 'step4',
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const Step4Family()),
+      ),
+
+      // ── PROFILE SETUP — Step 5 ──────────────────
+      GoRoute(
+        path: AppRoute.step5,
+        name: 'step5',
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const Step5Photos()),
+      ),
+
+      // ── SHELL — Bottom Nav ───────────────────────
       ShellRoute(
         builder: (context, state, child) =>
             MainShell(child: child),
         routes: [
           GoRoute(
-            path: AppRoutePaths.home,
+            path: AppRoute.home,
             name: 'home',
-            pageBuilder: (context, state) => _fade(
-              state, const HomeScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                _none(state,
+                    const HomeScreen()),
           ),
           GoRoute(
-            path: AppRoutePaths.search,
+            path: AppRoute.search,
             name: 'search',
-            pageBuilder: (context, state) => _fade(
-              state, const SearchScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                _none(state,
+                    const SearchScreen()),
           ),
           GoRoute(
-            path: AppRoutePaths.interests,
+            path: AppRoute.interests,
             name: 'interests',
-            pageBuilder: (context, state) => _fade(
-              state, const InterestsScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                _none(state,
+                    const InterestsScreen()),
           ),
           GoRoute(
-            path: AppRoutePaths.chatInbox,
-            name: 'chatInbox',
-            pageBuilder: (context, state) => _fade(
-              state, const ChatInboxScreen(),
-            ),
+            path: AppRoute.chat,
+            name: 'chat',
+            pageBuilder: (context, state) =>
+                _none(state,
+                    const ChatInboxScreen()),
           ),
           GoRoute(
-            path: AppRoutePaths.myProfile,
+            path: AppRoute.myProfile,
             name: 'myProfile',
-            pageBuilder: (context, state) => _fade(
-              state, const MyProfileScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                _none(state,
+                    const MyProfileScreen()),
           ),
         ],
       ),
 
-      // ── DETAIL / SECONDARY SCREENS ────────────────
+      // ── PROFILE DETAIL ──────────────────────────
       GoRoute(
-        path: AppRoutePaths.profileDetail,
+        path: AppRoute.profileDetail,
         name: 'profileDetail',
         pageBuilder: (context, state) {
-          final uid = state.pathParameters['uid'] ?? '';
-          final extra = state.extra as MockProfile?;
+          final uid =
+              state.pathParameters['uid'] ?? '';
+          final profile =
+          state.extra as MockProfile?;
           return _slide(
-              state, ProfileDetailScreen(uid: uid, profile: extra));
+            state,
+            ProfileDetailScreen(
+              profileId: uid,
+              profile: profile,
+            ),
+          );
         },
       ),
+
+      // ── PROFILE PREVIEW ─────────────────────────
       GoRoute(
-        path: AppRoutePaths.chatWindow,
+        path: AppRoute.profilePreview,
+        name: 'profilePreview',
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const ProfilePreviewScreen()),
+      ),
+
+      // ── EDIT PROFILE ────────────────────────────
+      GoRoute(
+        path: AppRoute.editProfile,
+        name: 'editProfile',
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const EditProfileScreen()),
+      ),
+
+      // ── SHORTLISTED ─────────────────────────────
+      GoRoute(
+        path: AppRoute.shortlisted,
+        name: 'shortlisted',
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const ShortlistedScreen()),
+      ),
+
+      // ── WHO VIEWED ──────────────────────────────
+      GoRoute(
+        path: AppRoute.whoViewed,
+        name: 'whoViewed',
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const WhoViewedScreen()),
+      ),
+
+      // ── PARTNER PREFERENCE ──────────────────────
+      GoRoute(
+        path: AppRoute.partnerPref,
+        name: 'partnerPref',
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const PartnerPreferenceScreen()),
+      ),
+
+      // ── HOROSCOPE ───────────────────────────────
+      GoRoute(
+        path: AppRoute.horoscope,
+        name: 'horoscope',
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const HoroscopeScreen()),
+      ),
+
+      // ── ID VERIFICATION ─────────────────────────
+      GoRoute(
+        path: AppRoute.idVerification,
+        name: 'idVerification',
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const IdVerificationScreen()),
+      ),
+
+      // ── BLOCKED USERS ───────────────────────────
+      GoRoute(
+        path: AppRoute.blockedUsers,
+        name: 'blockedUsers',
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const BlockedUsersScreen()),
+      ),
+
+      // ── CHAT WINDOW ─────────────────────────────
+      GoRoute(
+        path: AppRoute.chatWindow,
         name: 'chatWindow',
         pageBuilder: (context, state) {
-          final chatId = state.pathParameters['chatId'] ?? '';
-          final extra = state.extra as Map<String, dynamic>?;
+          final chatId =
+              state.pathParameters['chatId'] ??
+                  '';
           return _slide(
-              state,
-              ChatWindowScreen(
-                chatId: chatId,
-                otherUserName: extra?['name'] ?? '',
-                otherUserEmoji: extra?['emoji'] ?? '👤',
-                otherUserCaste: extra?['caste'] ?? '',
-                otherUserCity: extra?['city'] ?? '',
-              ));
+            state,
+            ChatWindowScreen(chatId: chatId),
+          );
         },
       ),
+
+      // ── NOTIFICATIONS ───────────────────────────
       GoRoute(
-        path: AppRoutePaths.notifications,
+        path: AppRoute.notifications,
         name: 'notifications',
-        pageBuilder: (context, state) => _slide(
-          state, const NotificationsScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const NotificationsScreen()),
       ),
+
+      // ── PREMIUM ─────────────────────────────────
       GoRoute(
-        path: AppRoutePaths.premium,
+        path: AppRoute.premium,
         name: 'premium',
-        pageBuilder: (context, state) => _slide(
-          state, const PremiumScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const PremiumScreen()),
       ),
+
+      // ── PRIVACY ─────────────────────────────────
       GoRoute(
-        path: AppRoutePaths.privacy,
+        path: AppRoute.privacy,
         name: 'privacy',
-        pageBuilder: (context, state) => _slide(
-          state, const PrivacyScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const PrivacyScreen()),
       ),
+
+      // ── HELP & SUPPORT ──────────────────────────
       GoRoute(
-        path: AppRoutePaths.shortlisted,
-        name: 'shortlisted',
-        pageBuilder: (context, state) => _slide(
-          state, const ShortlistedScreen(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutePaths.whoViewed,
-        name: 'whoViewed',
-        pageBuilder: (context, state) => _slide(
-          state, const WhoViewedScreen(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutePaths.partnerPreference,
-        name: 'partnerPreference',
-        pageBuilder: (context, state) => _slide(
-          state, const PartnerPreferenceScreen(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutePaths.horoscope,
-        name: 'horoscope',
-        pageBuilder: (context, state) => _slide(
-          state, const HoroscopeScreen(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutePaths.idVerification,
-        name: 'idVerification',
-        pageBuilder: (context, state) => _slide(
-          state, const IdVerificationScreen(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutePaths.blockedUsers,
-        name: 'blockedUsers',
-        pageBuilder: (context, state) => _slide(
-          state, const BlockedUsersScreen(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutePaths.helpSupport,
+        path: AppRoute.helpSupport,
         name: 'helpSupport',
-        pageBuilder: (context, state) => _slide(
-          state, const HelpSupportScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const HelpSupportScreen()),
       ),
+
+      // ── DELETE ACCOUNT ──────────────────────────
       GoRoute(
-        path: AppRoutePaths.deleteAccount,
+        path: AppRoute.deleteAccount,
         name: 'deleteAccount',
-        pageBuilder: (context, state) => _slide(
-          state, const DeleteAccountScreen(),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutePaths.profilePreview,
-        name: 'profilePreview',
-        pageBuilder: (context, state) => _slide(
-          state, const ProfilePreviewScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            _slide(state,
+                const DeleteAccountScreen()),
       ),
     ],
+
+    // ── ERROR PAGE ────────────────────────────────
+    errorPageBuilder: (context, state) =>
+        _none(state, const _ErrorScreen()),
   );
 
-  // ── TRANSITIONS ──────────────────────────────────────
-  static CustomTransitionPage _fade(
-      GoRouterState state, Widget child) {
-    return CustomTransitionPage(
-      key: state.pageKey,
-      child: child,
-      transitionDuration: const Duration(milliseconds: 300),
-      transitionsBuilder: (context, animation, secondary, child) =>
-          FadeTransition(opacity: animation, child: child),
-    );
-  }
+  // ─────────────────────────────────────────────────
+  // PAGE TRANSITIONS
+  // ─────────────────────────────────────────────────
 
-  static CustomTransitionPage _slide(
-      GoRouterState state, Widget child) {
-    return CustomTransitionPage(
+  /// Slide from right — standard push
+  static CustomTransitionPage<void> _slide(
+      GoRouterState state,
+      Widget child,
+      ) {
+    return CustomTransitionPage<void>(
       key: state.pageKey,
       child: child,
-      transitionDuration: const Duration(milliseconds: 280),
-      transitionsBuilder: (context, animation, secondary, child) {
-        final tween = Tween(
-          begin: const Offset(1.0, 0.0),
-          end: Offset.zero,
-        ).chain(CurveTween(curve: Curves.easeInOut));
+      transitionDuration:
+      const Duration(milliseconds: 280),
+      reverseTransitionDuration:
+      const Duration(milliseconds: 220),
+      transitionsBuilder: (
+          _,
+          animation,
+          secondaryAnimation,
+          child,
+          ) {
         return SlideTransition(
-          position: animation.drive(tween),
+          position: animation.drive(
+            Tween<Offset>(
+              begin: const Offset(1.0, 0.0),
+              end: Offset.zero,
+            ).chain(CurveTween(
+                curve: Curves.easeOut)),
+          ),
           child: child,
         );
       },
+    );
+  }
+
+  /// Fade — splash + welcome only
+  static CustomTransitionPage<void> _fade(
+      GoRouterState state,
+      Widget child,
+      ) {
+    return CustomTransitionPage<void>(
+      key: state.pageKey,
+      child: child,
+      transitionDuration:
+      const Duration(milliseconds: 400),
+      transitionsBuilder:
+          (_, animation, __, child) =>
+          FadeTransition(
+            opacity: animation,
+            child: child,
+          ),
+    );
+  }
+
+  /// No animation — bottom nav tab switches
+  static NoTransitionPage<void> _none(
+      GoRouterState state,
+      Widget child,
+      ) {
+    return NoTransitionPage<void>(
+      key: state.pageKey,
+      child: child,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// ERROR SCREEN
+// ─────────────────────────────────────────────────────────
+
+class _ErrorScreen extends StatelessWidget {
+  const _ErrorScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.ivory,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment:
+            MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  color: AppColors.crimsonSurface,
+                  borderRadius:
+                  BorderRadius.circular(22),
+                ),
+                child: const Center(
+                  child: Text('😕',
+                      style: TextStyle(
+                          fontSize: 44)),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Page Not Found',
+                style: AppTextStyles.h3,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'The page you are looking for\ndoes not exist.',
+                style: AppTextStyles.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: () =>
+                      context.go(AppRoute.home),
+                  child:
+                  const Text('Go to Home'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => context
+                    .go(AppRoute.welcome),
+                child: Text(
+                  'Go to Welcome Screen',
+                  style: AppTextStyles
+                      .buttonSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

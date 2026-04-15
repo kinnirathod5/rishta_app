@@ -1,68 +1,102 @@
-import 'dart:ui';
+// lib/presentation/home/profile_detail_screen.dart
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
-import 'home_screen.dart'; // To import MockProfile and mockProfiles
+import '../../core/constants/app_strings.dart';
+import '../home/home_screen.dart';
+import '../../core/widgets/block_report_dialog.dart';
 
-class ProfileDetailScreen extends StatefulWidget {
-  final String uid;
+class ProfileDetailScreen extends ConsumerStatefulWidget {
+  final String profileId;
   final MockProfile? profile;
 
   const ProfileDetailScreen({
     super.key,
-    required this.uid,
+    required this.profileId,
     this.profile,
   });
 
   @override
-  State<ProfileDetailScreen> createState() => _ProfileDetailScreenState();
+  ConsumerState<ProfileDetailScreen> createState() =>
+      _ProfileDetailScreenState();
 }
 
-class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
-  int _currentTab = 0;
+class _ProfileDetailScreenState
+    extends ConsumerState<ProfileDetailScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  bool _isInterested = false;
   bool _isShortlisted = false;
-  bool _interestSent = false;
-  bool _isLoadingInterest = false;
-  final bool _isLoading = false;
+  bool _isExpanded = false;
 
-  late MockProfile _profile;
+  // Mock full profile data
+  MockProfile get _profile =>
+      widget.profile ??
+          const MockProfile(
+            id: '0',
+            name: 'Priya Sharma',
+            age: 26,
+            caste: 'Brahmin',
+            city: 'Delhi',
+            profession: 'Software Engineer',
+            emoji: '👩',
+            isVerified: true,
+            isPremium: false,
+          );
 
   @override
   void initState() {
     super.initState();
-    _profile = widget.profile ?? mockProfiles.firstWhere(
-      (p) => p.id == widget.uid,
-      orElse: () => mockProfiles.first,
+    _tabController =
+        TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // ── ACTIONS ───────────────────────────────────────────
+  void _toggleInterest() {
+    setState(() => _isInterested = !_isInterested);
+    // TODO: Phase 3 — InterestRepository.sendInterest()
+    _showSnack(
+      _isInterested
+          ? 'Interest sent to ${_profile.name}! 💌'
+          : 'Interest withdrawn',
+      _isInterested ? AppColors.success : AppColors.ink,
     );
   }
 
   void _toggleShortlist() {
-    setState(() {
-      _isShortlisted = !_isShortlisted;
-    });
+    setState(() => _isShortlisted = !_isShortlisted);
+    // TODO: Phase 3 — ProfileRepository.toggleShortlist()
+    _showSnack(
+      _isShortlisted
+          ? '${_profile.name} added to shortlist ✓'
+          : 'Removed from shortlist',
+      AppColors.gold,
+    );
   }
 
-  void _sendInterest() async {
-    setState(() => _isLoadingInterest = true);
-    await Future.delayed(const Duration(seconds: 1));
-    if (!mounted) return;
-    setState(() {
-      _isLoadingInterest = false;
-      _interestSent = true;
-    });
+  void _startChat() {
+    _showSnack(
+        'Connect first to start chatting', AppColors.ink);
+    // TODO: Phase 3 — Navigate to chat after connection
+  }
+
+  void _showSnack(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: const [
-            Icon(Icons.favorite_rounded, size: 16, color: Colors.white),
-            SizedBox(width: 8),
-            Text("Interest bhej diya! 💌"),
-          ],
-        ),
-        backgroundColor: AppColors.success,
+        content: Text(msg),
+        backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: const Duration(seconds: 3),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -72,65 +106,65 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       context: context,
       backgroundColor: AppColors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+            top: Radius.circular(20)),
       ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Drag handle
-              Container(
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(
+            24, 8, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
                   color: AppColors.ivoryDark,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius:
+                  BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 16),
-              _buildOptionTile(
-                Icons.share_outlined,
-                'Profile Share Karo',
-                AppColors.crimson,
-                () => Navigator.pop(context),
-              ),
-              _buildOptionTile(
-                Icons.block_rounded,
-                'Block Karo',
-                AppColors.error,
-                () => Navigator.pop(context),
-              ),
-              _buildOptionTile(
-                Icons.flag_outlined,
-                'Report Karo',
-                AppColors.error,
-                () => Navigator.pop(context),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildOptionTile(IconData icon, String label, Color color, VoidCallback onTap) {
-    return ListTile(
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
+            ),
+            const SizedBox(height: 16),
+            _OptionTile(
+              icon: Icons.bookmark_border_rounded,
+              label: _isShortlisted
+                  ? 'Remove from Shortlist'
+                  : 'Add to Shortlist',
+              onTap: () {
+                Navigator.pop(context);
+                _toggleShortlist();
+              },
+            ),
+            _OptionTile(
+              icon: Icons.share_outlined,
+              label: 'Share Profile',
+              onTap: () {
+                Navigator.pop(context);
+                _showSnack(
+                    'Share feature coming soon',
+                    AppColors.ink);
+              },
+            ),
+            _OptionTile(
+              icon: Icons.flag_outlined,
+              label: 'Block / Report',
+              isDestructive: true,
+              onTap: () {
+                Navigator.pop(context);
+                BlockReportDialog.show(
+                  context,
+                  userName: _profile.name,
+                  userEmoji: _profile.emoji,
+                  userId: _profile.id,
+                  onBlocked: () => context.pop(),
+                );
+              },
+            ),
+          ],
         ),
-        child: Center(child: Icon(icon, size: 20, color: color)),
       ),
-      title: Text(
-        label,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-      ),
-      onTap: onTap,
     );
   }
 
@@ -138,609 +172,1030 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.ivory,
-      extendBodyBehindAppBar: true,
       body: Stack(
         children: [
+          // ── MAIN SCROLL ─────────────────────────
           CustomScrollView(
+            physics: const BouncingScrollPhysics(),
             slivers: [
-              _buildHeroSection(),
-              SliverToBoxAdapter(child: _buildQuickInfoChips()),
-              SliverToBoxAdapter(child: _buildTabSection()),
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              _buildSliverAppBar(),
+              SliverToBoxAdapter(
+                  child: _buildProfileHeader()),
+              SliverToBoxAdapter(
+                  child: _buildQuickStats()),
+              SliverToBoxAdapter(
+                  child: _buildTabSection()),
+              const SliverToBoxAdapter(
+                  child: SizedBox(height: 120)),
             ],
           ),
-          _buildBottomActionBar(),
-          if (_isLoading)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black26,
-                child: const Center(child: CircularProgressIndicator()),
-              ),
-            ),
+          // ── FIXED TOP ACTIONS ───────────────────
+          _buildTopActions(),
+          // ── FIXED BOTTOM BAR ────────────────────
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: _buildBottomBar(),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildHeroSection() {
+  // ── SLIVER APP BAR (Photo) ────────────────────────────
+  Widget _buildSliverAppBar() {
     return SliverAppBar(
-      expandedHeight: 320,
-      pinned: true,
-      backgroundColor: AppColors.crimson,
-      leading: Padding(
-        padding: const EdgeInsets.only(left: 16),
-        child: Center(
-          child: GestureDetector(
-            onTap: () => context.pop(),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Center(
-                child: Icon(Icons.arrow_back_ios_new, size: 16, color: Colors.white),
-              ),
-            ),
-          ),
-        ),
-      ),
-      actions: [
-        GestureDetector(
-          onTap: _toggleShortlist,
-          child: Container(
-            width: 36,
-            height: 36,
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Center(
-              child: Icon(
-                _isShortlisted ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                size: 18,
-                color: _isShortlisted ? AppColors.gold : Colors.white,
-              ),
-            ),
-          ),
-        ),
-        GestureDetector(
-          onTap: _showMoreOptions,
-          child: Container(
-            width: 36,
-            height: 36,
-            margin: const EdgeInsets.only(right: 16),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Center(
-              child: Icon(Icons.more_vert_rounded, size: 18, color: Colors.white),
-            ),
-          ),
-        ),
-      ],
+      expandedHeight: 340,
+      collapsedHeight: 0,
+      pinned: false,
+      floating: false,
+      automaticallyImplyLeading: false,
+      backgroundColor: Colors.transparent,
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // PHOTO AREA
+            // Photo placeholder
             Container(
-              color: _profile.isVerified ? AppColors.crimsonSurface : const Color(0xFFF3F4F6),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.crimsonSurface,
+                    AppColors.ivoryDark,
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
               child: Center(
-                child: Text(_profile.emoji, style: const TextStyle(fontSize: 120)),
+                child: Text(
+                  _profile.emoji,
+                  style: const TextStyle(fontSize: 120),
+                ),
               ),
             ),
-            // GRADIENT OVERLAY
-            Positioned.fill(
-              child: DecoratedBox(
+            // Bottom gradient overlay
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 100,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
                     colors: [
+                      AppColors.ivory,
                       Colors.transparent,
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.2),
-                      Colors.black.withValues(alpha: 0.7),
                     ],
-                    stops: const [0.0, 0.4, 0.7, 1.0],
                   ),
                 ),
               ),
             ),
-            // PROFILE INFO
+            // Photo count badge
             Positioned(
               bottom: 16,
-              left: 16,
               right: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "${_profile.name}, ${_profile.age}",
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            height: 1.2,
-                          ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.ink.withOpacity(0.7),
+                  borderRadius:
+                  BorderRadius.circular(100),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                        Icons.photo_library_outlined,
+                        size: 12,
+                        color: Colors.white),
+                    const SizedBox(width: 4),
+                    const Text(
+                      '6 Photos',
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── TOP ACTIONS (Back + More) ─────────────────────────
+  Widget _buildTopActions() {
+    final topPad = MediaQuery.of(context).padding.top;
+    return Positioned(
+      top: topPad + 8,
+      left: 16,
+      right: 16,
+      child: Row(
+        mainAxisAlignment:
+        MainAxisAlignment.spaceBetween,
+        children: [
+          // Back
+          _CircleAction(
+            icon: Icons.arrow_back_ios_new,
+            onTap: () => context.pop(),
+          ),
+          // More options
+          _CircleAction(
+            icon: Icons.more_vert_rounded,
+            onTap: _showMoreOptions,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── PROFILE HEADER ────────────────────────────────────
+  Widget _buildProfileHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Name + age row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                  CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Text(
+                        '${_profile.name}, ${_profile.age}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       if (_profile.isVerified)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding:
+                          const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3),
                           decoration: BoxDecoration(
                             color: AppColors.success,
-                            borderRadius: BorderRadius.circular(100),
+                            borderRadius:
+                            BorderRadius.circular(100),
                           ),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.verified_rounded, size: 12, color: Colors.white),
-                              SizedBox(width: 5),
+                              Icon(
+                                  Icons.verified_rounded,
+                                  size: 11,
+                                  color: Colors.white),
+                              SizedBox(width: 3),
                               Text(
-                                "Verified",
+                                AppStrings.verified,
                                 style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
+                                  fontSize: 10,
+                                  fontWeight:
+                                  FontWeight.w700,
                                   color: Colors.white,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(Icons.location_on_rounded, size: 14, color: Colors.white.withValues(alpha: 0.8)),
-                      const SizedBox(width: 4),
+                    ]),
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      const Icon(
+                          Icons.work_outline_rounded,
+                          size: 14,
+                          color: AppColors.muted),
+                      const SizedBox(width: 5),
                       Text(
-                        "${_profile.city} • ${_profile.religion}",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontWeight: FontWeight.w500,
-                        ),
+                        _profile.profession,
+                        style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.inkSoft),
                       ),
-                    ],
-                  ),
-                ],
+                    ]),
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      const Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: AppColors.muted),
+                      const SizedBox(width: 5),
+                      Text(
+                        '${_profile.city} • ${_profile.caste}',
+                        style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.inkSoft),
+                      ),
+                    ]),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickInfoChips() {
-    return Container(
-      color: AppColors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildQuickChip(Icons.school_outlined, _profile.education),
-            _buildQuickChip(Icons.work_outline_rounded, _profile.profession),
-            _buildQuickChip(Icons.height_rounded, _profile.height),
-            _buildQuickChip(Icons.temple_hindu_outlined, _profile.caste),
-            _buildQuickChip(Icons.favorite_border_rounded, 'Never Married'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickChip(IconData icon, String label) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppColors.ivory,
-        borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: AppColors.border, width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: AppColors.crimson),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.inkSoft),
+              // Profile score ring
+              _ProfileScoreRing(score: 78),
+            ],
           ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildTabSection() {
-    return Container(
-      color: AppColors.white,
-      child: Column(
-        children: [
-          // TAB BAR
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.border, width: 2)),
-            ),
-            child: Row(
+          const SizedBox(height: 16),
+
+          // About snippet
+          GestureDetector(
+            onTap: () =>
+                setState(() => _isExpanded = !_isExpanded),
+            child: Column(
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
               children: [
-                _buildTabItem(0, 'Baare Mein'),
-                _buildTabItem(1, 'Details'),
-                _buildTabItem(2, 'Family'),
-                _buildTabItem(3, 'Partner'),
+                AnimatedCrossFade(
+                  duration:
+                  const Duration(milliseconds: 250),
+                  crossFadeState: _isExpanded
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                  firstChild: Text(
+                    'Software engineer at TCS with 3 years of experience. Love traveling, cooking and reading. Looking for a kind, understanding partner.',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.inkSoft,
+                      height: 1.6,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  secondChild: const Text(
+                    'Software engineer at TCS with 3 years of experience. Love traveling, cooking and reading. Looking for a kind, understanding partner who values family.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.inkSoft,
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _isExpanded
+                      ? 'Show less ▲'
+                      : 'Read more ▼',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.crimson,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
-          // TAB CONTENT
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: _getTabContent(),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildTabItem(int index, String label) {
-    bool active = _currentTab == index;
-    return GestureDetector(
-      onTap: () => setState(() => _currentTab = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: active ? AppColors.crimson : Colors.transparent,
-              width: 3,
-            ),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w400,
-            color: active ? AppColors.crimson : AppColors.muted,
-          ),
-        ),
+  // ── QUICK STATS ───────────────────────────────────────
+  Widget _buildQuickStats() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.softShadow,
+      ),
+      child: Row(
+        children: [
+          _StatBox(
+              emoji: '📏',
+              value: "5'4\"",
+              label: 'Height'),
+          _StatBox(
+              emoji: '🛕',
+              value: 'Hindu',
+              label: 'Religion'),
+          _StatBox(
+              emoji: '🎓',
+              value: 'B.Tech',
+              label: 'Education'),
+          _StatBox(
+              emoji: '💰',
+              value: '8-12 L',
+              label: 'Income'),
+        ],
       ),
     );
   }
 
-  Widget _getTabContent() {
-    switch (_currentTab) {
-      case 0: return _buildAboutTab();
-      case 1: return _buildDetailsTab();
-      case 2: return _buildFamilyTab();
-      case 3: return _buildPartnerPrefTab();
-      default: return _buildAboutTab();
-    }
+  // ── TAB SECTION ───────────────────────────────────────
+  Widget _buildTabSection() {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        // Tab bar
+        Container(
+          margin: const EdgeInsets.symmetric(
+              horizontal: 20),
+          decoration: BoxDecoration(
+            color: AppColors.ivoryDark,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TabBar(
+            controller: _tabController,
+            indicator: BoxDecoration(
+              color: AppColors.crimson,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            indicatorSize: TabBarIndicatorSize.tab,
+            dividerColor: Colors.transparent,
+            labelColor: Colors.white,
+            unselectedLabelColor: AppColors.muted,
+            labelStyle: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+            ),
+            tabs: const [
+              Tab(text: 'About'),
+              Tab(text: 'Family'),
+              Tab(text: 'Preferences'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Tab content
+        SizedBox(
+          height: 420,
+          child: TabBarView(
+            controller: _tabController,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _buildAboutTab(),
+              _buildFamilyTab(),
+              _buildPreferencesTab(),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
+  // ── ABOUT TAB ─────────────────────────────────────────
   Widget _buildAboutTab() {
-    return Padding(
-      key: const ValueKey(0),
-      padding: const EdgeInsets.all(20),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 20),
+      physics: const NeverScrollableScrollPhysics(),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Apne Baare Mein", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.ink)),
-          const SizedBox(height: 8),
-          Text(
-            _profile.about.length < 50 
-              ? "Software engineer at TCS hoon. Delhi mein rehti hoon. Family-oriented hoon, traditional values ke saath modern thinking. Hobbies mein reading, cooking aur travel pasand hai. Life partner mein honesty aur respect chahiye."
-              : _profile.about,
-            style: const TextStyle(fontSize: 14, color: AppColors.inkSoft, height: 1.7),
+          _InfoCard(
+            title: 'Basic Details',
+            icon: Icons.person_outline_rounded,
+            rows: const [
+              _InfoRow(
+                  label: 'Full Name',
+                  value: 'Priya Sharma'),
+              _InfoRow(
+                  label: 'Date of Birth',
+                  value: '12 Mar 1998 • 26 yrs'),
+              _InfoRow(
+                  label: 'Height',
+                  value: "5'4\" (163 cm)"),
+              _InfoRow(
+                  label: 'Current City',
+                  value: 'Delhi, India'),
+              _InfoRow(
+                  label: 'Mother Tongue',
+                  value: 'Hindi'),
+              _InfoRow(
+                  label: 'Marital Status',
+                  value: 'Never Married'),
+            ],
           ),
-          const SizedBox(height: 20),
-          const Text("Photos", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.ink)),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 100,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: 4,
-              itemBuilder: (context, index) {
-                return Container(
-                  width: 80,
-                  height: 100,
-                  margin: const EdgeInsets.only(right: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Stack(
-                    children: [
-                      Center(child: Text(_profile.emoji, style: const TextStyle(fontSize: 36))),
-                      if (index > 0)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                            child: Container(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              child: const Center(
-                                child: Icon(Icons.lock_outline, color: Colors.white, size: 24),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
+          const SizedBox(height: 12),
+          _InfoCard(
+            title: 'Religion & Community',
+            icon: Icons.temple_hindu_outlined,
+            rows: const [
+              _InfoRow(
+                  label: 'Religion',
+                  value: 'Hindu'),
+              _InfoRow(
+                  label: 'Caste',
+                  value: 'Brahmin'),
+              _InfoRow(
+                  label: 'Sub Caste',
+                  value: 'Kanyakubja'),
+              _InfoRow(
+                  label: 'Gotra',
+                  value: 'Kashyap'),
+              _InfoRow(
+                  label: 'Manglik',
+                  value: 'No'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _InfoCard(
+            title: 'Education & Career',
+            icon: Icons.school_outlined,
+            rows: const [
+              _InfoRow(
+                  label: 'Qualification',
+                  value: 'B.Tech'),
+              _InfoRow(
+                  label: 'College',
+                  value: 'Delhi Technological Univ.'),
+              _InfoRow(
+                  label: 'Employed In',
+                  value: 'Private Sector'),
+              _InfoRow(
+                  label: 'Company',
+                  value: 'TCS'),
+              _InfoRow(
+                  label: 'Designation',
+                  value: 'Software Engineer'),
+              _InfoRow(
+                  label: 'Annual Income',
+                  value: '8-12 LPA'),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDetailsTab() {
-    return Padding(
-      key: const ValueKey(1),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildDetailSection("Personal Info", [
-            _buildDetailRow(Icons.person_outline, "Naam", _profile.name),
-            _buildDetailRow(Icons.cake_outlined, "Umar", "${_profile.age} saal"),
-            _buildDetailRow(Icons.height_rounded, "Lambai", _profile.height),
-            _buildDetailRow(Icons.location_on_outlined, "Sheher", _profile.city),
-            _buildDetailRow(Icons.language_rounded, "Matrubhasha", "Hindi"),
-            _buildDetailRow(Icons.favorite_outline, "Vivah Status", "Kabhi Shaadi Nahi Hui"),
-          ]),
-          const SizedBox(height: 16),
-          _buildDetailSection("Shiksha & Kaam", [
-            _buildDetailRow(Icons.school_outlined, "Shiksha", _profile.education),
-            _buildDetailRow(Icons.work_outline_rounded, "Profession", _profile.profession),
-            _buildDetailRow(Icons.business_outlined, "Company", "TCS"),
-            _buildDetailRow(Icons.currency_rupee_rounded, "Income", "8-12 LPA"),
-          ]),
-          const SizedBox(height: 16),
-          _buildDetailSection("Religion & Caste", [
-            _buildDetailRow(Icons.temple_hindu_outlined, "Dharm", _profile.religion),
-            _buildDetailRow(Icons.people_outline_rounded, "Jaati", _profile.caste),
-            _buildDetailRow(Icons.family_restroom_outlined, "Gotra", "Kashyap"),
-            _buildDetailRow(Icons.stars_outlined, "Manglik", "Nahi"),
-          ]),
-        ],
-      ),
-    );
-  }
-
+  // ── FAMILY TAB ────────────────────────────────────────
   Widget _buildFamilyTab() {
-    return Padding(
-      key: const ValueKey(2),
-      padding: const EdgeInsets.all(20),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 20),
+      physics: const NeverScrollableScrollPhysics(),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildDetailSection("Parivar ki Jankari", [
-            _buildDetailRow(Icons.home_outlined, "Parivar Prakar", "Sanyukt Parivar"),
-            _buildDetailRow(Icons.favorite_outline, "Parivar ki Soch", "Madhyam"),
-            _buildDetailRow(Icons.location_city_outlined, "Parivar ka Sheher", "Agra"),
-            _buildDetailRow(Icons.people_outline_rounded, "Parivar ki Sthiti", "Madhyam Varg"),
-          ]),
-          const SizedBox(height: 16),
-          _buildDetailSection("Mata-Pita", [
-            _buildDetailRow(Icons.person_outline, "Pita ka Kaam", "Business"),
-            _buildDetailRow(Icons.person_outline, "Mata ka Kaam", "Homemaker"),
-            _buildDetailRow(Icons.people_outline_rounded, "Bhai", "1"),
-            _buildDetailRow(Icons.people_outline_rounded, "Behen", "0"),
-          ]),
+          _InfoCard(
+            title: 'Family Background',
+            icon: Icons.home_outlined,
+            rows: const [
+              _InfoRow(
+                  label: 'Family Type',
+                  value: 'Joint Family'),
+              _InfoRow(
+                  label: 'Family Values',
+                  value: 'Traditional'),
+              _InfoRow(
+                  label: 'Family Status',
+                  value: 'Middle Class'),
+              _InfoRow(
+                  label: 'Family City',
+                  value: 'Lucknow, UP'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _InfoCard(
+            title: 'Parents & Siblings',
+            icon: Icons.people_outline_rounded,
+            rows: const [
+              _InfoRow(
+                  label: 'Father',
+                  value: 'Business'),
+              _InfoRow(
+                  label: 'Mother',
+                  value: 'Homemaker'),
+              _InfoRow(
+                  label: 'Brothers',
+                  value: '1 (Married)'),
+              _InfoRow(
+                  label: 'Sisters',
+                  value: 'None'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _InfoCard(
+            title: 'Horoscope',
+            icon: Icons.stars_rounded,
+            rows: const [
+              _InfoRow(
+                  label: 'Rashi',
+                  value: 'Kanya (Virgo)'),
+              _InfoRow(
+                  label: 'Nakshatra',
+                  value: 'Hasta'),
+              _InfoRow(
+                  label: 'Birth Place',
+                  value: 'Lucknow'),
+              _InfoRow(
+                  label: 'Kundali',
+                  value: 'Available'),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildPartnerPrefTab() {
-    return Padding(
-      key: const ValueKey(3),
-      padding: const EdgeInsets.all(20),
+  // ── PREFERENCES TAB ───────────────────────────────────
+  Widget _buildPreferencesTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 20),
+      physics: const NeverScrollableScrollPhysics(),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _InfoCard(
+            title: 'Partner Preferences',
+            icon: Icons.favorite_outline_rounded,
+            rows: const [
+              _InfoRow(
+                  label: 'Age Range',
+                  value: '27 – 35 yrs'),
+              _InfoRow(
+                  label: 'Height Range',
+                  value: "5'5\" – 6'0\""),
+              _InfoRow(
+                  label: 'Religion',
+                  value: 'Hindu'),
+              _InfoRow(
+                  label: 'Caste',
+                  value: 'Brahmin, Kayastha'),
+              _InfoRow(
+                  label: 'Education',
+                  value: 'Graduate & above'),
+              _InfoRow(
+                  label: 'Income',
+                  value: '8 LPA & above'),
+              _InfoRow(
+                  label: 'Location',
+                  value: 'Delhi, Mumbai, Bangalore'),
+              _InfoRow(
+                  label: 'Marital Status',
+                  value: 'Never Married'),
+            ],
+          ),
+          const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.goldSurface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.gold.withValues(alpha: 0.2)),
+              border: Border.all(
+                  color: AppColors.gold.withOpacity(0.3)),
             ),
-            child: const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
               children: [
-                Text('💝', style: TextStyle(fontSize: 20)),
-                SizedBox(width: 10),
-                Expanded(
+                const Icon(
+                    Icons.info_outline_rounded,
+                    size: 16,
+                    color: AppColors.gold),
+                const SizedBox(width: 10),
+                const Expanded(
                   child: Text(
-                    "Chahte hain ki partner honest aur caring ho. Age 26-34, well-educated, family-oriented. Location preference: Delhi NCR ya Mumbai.",
-                    style: TextStyle(fontSize: 14, color: AppColors.inkSoft, height: 1.7),
+                    'Partner preferences are indicative. Final decision is always personal.',
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.inkSoft,
+                        height: 1.5),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          _buildDetailSection("Partner ki Preference", [
-            _buildDetailRow(Icons.cake_outlined, "Umar", "26-34 saal"),
-            _buildDetailRow(Icons.height_rounded, "Lambai", "5'6\" - 6'2\""),
-            _buildDetailRow(Icons.temple_hindu_outlined, "Dharm", "Hindu"),
-            _buildDetailRow(Icons.people_outline_rounded, "Jaati", "Brahmin, Kayastha"),
-            _buildDetailRow(Icons.school_outlined, "Shiksha", "Graduate+"),
-            _buildDetailRow(Icons.currency_rupee_rounded, "Income", "6 LPA+"),
-            _buildDetailRow(Icons.location_on_outlined, "Location", "Delhi, Mumbai"),
-          ]),
         ],
       ),
     );
   }
 
-  Widget _buildDetailSection(String title, List<Widget> rows) {
+  // ── BOTTOM ACTION BAR ─────────────────────────────────
+  Widget _buildBottomBar() {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        MediaQuery.of(context).padding.bottom + 12,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        border: const Border(
+          top: BorderSide(color: AppColors.border),
+        ),
+        boxShadow: AppColors.modalShadow,
+      ),
+      child: Row(children: [
+        // Shortlist button
+        GestureDetector(
+          onTap: _toggleShortlist,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: _isShortlisted
+                  ? AppColors.goldSurface
+                  : AppColors.ivoryDark,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _isShortlisted
+                    ? AppColors.gold
+                    : AppColors.border,
+                width: 1.5,
+              ),
+            ),
+            child: Center(
+              child: Icon(
+                _isShortlisted
+                    ? Icons.bookmark_rounded
+                    : Icons.bookmark_border_rounded,
+                size: 22,
+                color: _isShortlisted
+                    ? AppColors.gold
+                    : AppColors.muted,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+
+        // Chat button
+        GestureDetector(
+          onTap: _startChat,
+          child: Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.ivoryDark,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: AppColors.border, width: 1.5),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 22,
+                color: AppColors.inkSoft,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+
+        // Send Interest button
+        Expanded(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: 52,
+            child: ElevatedButton(
+              onPressed: _toggleInterest,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _isInterested
+                    ? AppColors.success
+                    : AppColors.crimson,
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                  BorderRadius.circular(14),
+                ),
+                elevation: 0,
+              ),
+              child: Row(
+                mainAxisAlignment:
+                MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _isInterested
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _isInterested
+                        ? AppStrings.interestSent
+                        : AppStrings.sendInterest,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+// ── PRIVATE WIDGETS ───────────────────────────────────────
+
+class _CircleAction extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _CircleAction({
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: AppColors.softShadow,
+        ),
+        child: Center(
+          child: Icon(icon,
+              size: 18, color: AppColors.ink),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileScoreRing extends StatelessWidget {
+  final int score;
+  const _ProfileScoreRing({required this.score});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Stack(alignment: Alignment.center, children: [
+          SizedBox(
+            width: 64,
+            height: 64,
+            child: CircularProgressIndicator(
+              value: score / 100,
+              strokeWidth: 5,
+              backgroundColor: AppColors.ivoryDark,
+              valueColor: const AlwaysStoppedAnimation(
+                  AppColors.crimson),
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$score%',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.crimson,
+                ),
+              ),
+            ],
+          ),
+        ]),
+        const SizedBox(height: 4),
+        const Text(
+          'Profile',
+          style: TextStyle(
+              fontSize: 10, color: AppColors.muted),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatBox extends StatelessWidget {
+  final String emoji;
+  final String value;
+  final String label;
+
+  const _StatBox({
+    required this.emoji,
+    required this.value,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(emoji,
+                style:
+                const TextStyle(fontSize: 18)),
+            const SizedBox(height: 5),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.muted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final List<_InfoRow> rows;
+
+  const _InfoCard({
+    required this.title,
+    required this.icon,
+    required this.rows,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
+        boxShadow: AppColors.softShadow,
       ),
       child: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.border)),
-            ),
-            child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
-          ),
-          ...rows.asMap().entries.map((entry) {
-            int idx = entry.key;
-            Widget row = entry.value;
-            if (idx == rows.length - 1) return row;
-            return Column(
-              children: [
-                row,
-                const Divider(height: 1, indent: 16, endIndent: 16, color: AppColors.border),
-              ],
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: AppColors.muted),
-              const SizedBox(width: 10),
-              Text(label, style: const TextStyle(fontSize: 13, color: AppColors.muted, fontWeight: FontWeight.w500)),
-            ],
-          ),
-          Text(value, style: const TextStyle(fontSize: 13, color: AppColors.ink, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomActionBar() {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomPadding),
-        child: Row(
-          children: [
-            // SHORTLIST BUTTON
-            GestureDetector(
-              onTap: _toggleShortlist,
-              child: Container(
-                width: 52,
-                height: 52,
+          // Card header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                16, 14, 16, 10),
+            child: Row(children: [
+              Container(
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: _isShortlisted ? AppColors.goldSurface : AppColors.ivoryDark,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: _isShortlisted ? AppColors.gold.withValues(alpha: 0.3) : AppColors.border,
-                  ),
+                  color: AppColors.crimsonSurface,
+                  borderRadius:
+                  BorderRadius.circular(8),
                 ),
                 child: Center(
-                  child: Icon(
-                    _isShortlisted ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                    color: _isShortlisted ? AppColors.gold : AppColors.muted,
-                    size: 22,
-                  ),
+                  child: Icon(icon,
+                      size: 16,
+                      color: AppColors.crimson),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            // INTEREST BUTTON
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  if (!_interestSent && !_isLoadingInterest) _sendInterest();
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: _interestSent ? AppColors.success : AppColors.crimson,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Center(
-                    child: _isLoadingInterest
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              _interestSent ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                              size: 20,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _interestSent ? "Interest Bheja ✓" : "❤️ Interest Bhejo",
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
-                            ),
-                          ],
-                        ),
-                  ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            // CHAT BUTTON
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: AppColors.infoSurface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
-              ),
-              child: const Center(
-                child: Icon(Icons.chat_bubble_outline_rounded, size: 22, color: AppColors.info),
-              ),
-            ),
-          ],
+            ]),
+          ),
+          const Divider(
+              height: 1, color: AppColors.border),
+          // Rows
+          ...rows.map((row) => _buildRow(row)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRow(_InfoRow row) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 16, vertical: 11),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+              color: AppColors.border,
+              width: 0.5),
         ),
+      ),
+      child: Row(
+        mainAxisAlignment:
+        MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            row.label,
+            style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.muted),
+          ),
+          const SizedBox(width: 16),
+          Flexible(
+            child: Text(
+              row.value,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.ink,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow {
+  final String label;
+  final String value;
+  const _InfoRow({required this.label, required this.value});
+}
+
+class _OptionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  const _OptionTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isDestructive
+        ? AppColors.error
+        : AppColors.inkSoft;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            vertical: 14),
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+                color: AppColors.border, width: 0.5),
+          ),
+        ),
+        child: Row(children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: isDestructive
+                  ? AppColors.errorSurface
+                  : AppColors.ivoryDark,
+              borderRadius:
+              BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Icon(icon,
+                  size: 18, color: color),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
+          ),
+          const Spacer(),
+          Icon(Icons.arrow_forward_ios_rounded,
+              size: 14, color: AppColors.muted),
+        ]),
       ),
     );
   }
