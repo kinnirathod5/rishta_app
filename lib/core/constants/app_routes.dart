@@ -36,6 +36,7 @@ import 'package:rishta_app/presentation/chat/chat_window_screen.dart';
 // ── PLACEHOLDER SCREENS ───────────────────────────────────
 // These will be replaced one by one with full implementations
 import 'package:rishta_app/presentation/placeholder_screens.dart';
+import 'package:rishta_app/presentation/interests/interests_screen.dart';
 
 // ─────────────────────────────────────────────────────────
 // ROUTE PATHS

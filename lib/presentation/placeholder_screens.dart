@@ -259,18 +259,6 @@ class _QuickLinkChip extends StatelessWidget {
 // Will be replaced with full implementations
 // ─────────────────────────────────────────────────────────
 
-class InterestsScreen extends StatelessWidget {
-  const InterestsScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const _PlaceholderScreen(
-        emoji: '💌',
-        title: 'Interests',
-        subtitle: 'Coming soon',
-        showBack: false,
-      );
-}
-
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
   @override
