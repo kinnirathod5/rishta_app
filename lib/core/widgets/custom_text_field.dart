@@ -449,8 +449,8 @@ class _AppTextFieldState
     return EdgeInsets.only(
       left: hasPrefixIcon ? 4 : 16,
       right: hasSuffixIcon ? 4 : 16,
-      top: widget.maxLines > 1 ? 14 : 0,
-      bottom: widget.maxLines > 1 ? 14 : 0,
+      top: 14,
+      bottom: 14,
     );
   }
 

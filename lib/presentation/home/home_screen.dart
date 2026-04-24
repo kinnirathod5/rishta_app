@@ -77,8 +77,7 @@ class _HomeScreenState
     WidgetsBinding.instance
         .addPostFrameCallback((_) {
       final auth = ref.read(authProvider);
-      setState(
-              () => _isGuest = auth.isAnonymous);
+      setState(() => _isGuest = auth.isAnonymous);
     });
   }
 
@@ -118,8 +117,6 @@ class _HomeScreenState
                 child: _buildTopBar(unreadCount)),
             SliverToBoxAdapter(
                 child: _buildWelcomeCard()),
-            SliverToBoxAdapter(
-                child: _buildActivityStrip()),
             if (_isGuest)
               SliverToBoxAdapter(
                   child: _buildGuestBanner()),
@@ -154,6 +151,7 @@ class _HomeScreenState
   }
 
   // ── TOP BAR ───────────────────────────────────────────
+  // Sirf Logo + App name + Notification bell
 
   Widget _buildTopBar(int unreadCount) {
     final topPad =
@@ -163,74 +161,57 @@ class _HomeScreenState
         gradient: AppColors.crimsonGradient,
       ),
       padding: EdgeInsets.fromLTRB(
-          20, topPad + 10, 16, 16),
+          20, topPad + 12, 16, 16),
       child: Row(
         children: [
-          // Logo + App name
-          Expanded(
-            child: Row(children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white
-                      .withOpacity(0.2),
-                  borderRadius:
-                  BorderRadius.circular(10),
-                ),
-                child: const Center(
-                  child: Text('💍',
-                      style: TextStyle(
-                          fontSize: 18)),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment:
-                CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    AppStrings.appName,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  Text(
-                    AppStrings.appTagline,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.white
-                          .withOpacity(0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ]),
+          // Logo
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color:
+              Colors.white.withOpacity(0.2),
+              borderRadius:
+              BorderRadius.circular(12),
+            ),
+            child: const Center(
+              child: Text('💍',
+                  style: TextStyle(fontSize: 20)),
+            ),
           ),
-          // Icons
-          Row(children: [
-            _TopBarIcon(
-              icon: Icons.search_rounded,
-              onTap: () =>
-                  context.go('/search'),
+          const SizedBox(width: 12),
+          // App name + tagline
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
+              children: [
+                Text(
+                  AppStrings.appName,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                Text(
+                  AppStrings.appTagline,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white
+                        .withOpacity(0.75),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 6),
-            _TopBarIcon(
-              icon: Icons.notifications_outlined,
-              badgeCount: unreadCount,
-              onTap: () =>
-                  context.push('/notifications'),
-            ),
-            const SizedBox(width: 6),
-            _TopBarIcon(
-              icon: Icons.tune_rounded,
-              onTap: () => context
-                  .push('/partner-preference'),
-            ),
-          ]),
+          ),
+          // Only notification bell
+          _NotificationBell(
+            badgeCount: unreadCount,
+            onTap: () =>
+                context.push('/notifications'),
+          ),
         ],
       ),
     );
@@ -239,10 +220,9 @@ class _HomeScreenState
   // ── WELCOME CARD ──────────────────────────────────────
 
   Widget _buildWelcomeCard() {
-    final profile = ref.watch(currentProfileProvider);
-    final score =
-    ref.watch(profileScoreProvider);
-
+    final profile =
+    ref.watch(currentProfileProvider);
+    final score = ref.watch(profileScoreProvider);
     final name = profile?.firstName ?? 'There';
     final greeting = _getGreeting();
 
@@ -252,17 +232,15 @@ class _HomeScreenState
       padding: const EdgeInsets.fromLTRB(
           20, 0, 20, 20),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.12),
-          borderRadius:
-          BorderRadius.circular(16),
+          color: Colors.white.withOpacity(0.13),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
               color:
               Colors.white.withOpacity(0.2)),
         ),
         child: Row(children: [
-          // Info
           Expanded(
             child: Column(
               crossAxisAlignment:
@@ -271,12 +249,12 @@ class _HomeScreenState
                 Text(
                   '$greeting, $name! 👋',
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Row(children: [
                   const Icon(
                     Icons.local_fire_department,
@@ -293,9 +271,57 @@ class _HomeScreenState
                     ),
                   ),
                 ]),
+                const SizedBox(height: 12),
+                // Complete profile CTA if score low
+                if (score < 80)
+                  GestureDetector(
+                    onTap: () =>
+                        context.go('/edit-profile'),
+                    child: Container(
+                      padding:
+                      const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white
+                            .withOpacity(0.18),
+                        borderRadius:
+                        BorderRadius.circular(
+                            100),
+                        border: Border.all(
+                          color: Colors.white
+                              .withOpacity(0.35),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize:
+                        MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons
+                                .edit_note_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            'Complete profile →',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight:
+                              FontWeight.w600,
+                              color: Colors.white
+                                  .withOpacity(0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
+          const SizedBox(width: 16),
           // Profile score ring
           GestureDetector(
             onTap: () =>
@@ -306,88 +332,51 @@ class _HomeScreenState
                   alignment: Alignment.center,
                   children: [
                     SizedBox(
-                      width: 56,
-                      height: 56,
+                      width: 62,
+                      height: 62,
                       child:
                       CircularProgressIndicator(
                         value: score / 100,
-                        strokeWidth: 4,
-                        backgroundColor: Colors
-                            .white
+                        strokeWidth: 5,
+                        backgroundColor:
+                        Colors.white
                             .withOpacity(0.2),
                         valueColor:
                         AlwaysStoppedAnimation(
-                            AppColors.goldLight),
+                          score >= 80
+                              ? AppColors.goldLight
+                              : Colors.white
+                              .withOpacity(0.7),
+                        ),
                       ),
                     ),
-                    Text(
-                      '$score%',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight:
-                        FontWeight.w700,
-                        color: Colors.white,
-                      ),
+                    Column(
+                      children: [
+                        Text(
+                          '$score%',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight:
+                            FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          'Profile',
+                          style: TextStyle(
+                            fontSize: 8,
+                            color: Colors.white
+                                .withOpacity(0.7),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  AppStrings.profileComplete,
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: Colors.white
-                        .withOpacity(0.7),
-                  ),
                 ),
               ],
             ),
           ),
         ]),
-      ),
-    );
-  }
-
-  // ── ACTIVITY STRIP ────────────────────────────────────
-
-  Widget _buildActivityStrip() {
-    final pendingInterests =
-    ref.watch(pendingInterestsCountProvider);
-    final connectionCount =
-    ref.watch(connectionCountProvider);
-
-    return Container(
-      color: AppColors.white,
-      padding: const EdgeInsets.symmetric(
-          vertical: 12),
-      child: Row(
-        children: [
-          _ActivityChip(
-            emoji: '💌',
-            label: '$pendingInterests'
-                ' ${AppStrings.newInterests}',
-            color: AppColors.crimson,
-            onTap: () =>
-                context.go('/interests'),
-          ),
-          _Divider(),
-          _ActivityChip(
-            emoji: '👁️',
-            label: '12 ${AppStrings.profileViews}',
-            color: AppColors.gold,
-            onTap: () =>
-                context.push('/who-viewed'),
-          ),
-          _Divider(),
-          _ActivityChip(
-            emoji: '🤝',
-            label: '$connectionCount'
-                ' ${AppStrings.connected}',
-            color: AppColors.success,
-            onTap: () =>
-                context.go('/interests'),
-          ),
-        ],
       ),
     );
   }
@@ -409,18 +398,15 @@ class _HomeScreenState
           Row(children: [
             Text(emoji,
                 style: const TextStyle(
-                    fontSize: 18)),
+                    fontSize: 20)),
             const SizedBox(width: 8),
-            Text(title,
-                style: AppTextStyles.h4),
+            Text(title, style: AppTextStyles.h4),
           ]),
           GestureDetector(
             onTap: onViewAll,
             child: Container(
-              padding:
-              const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
                 color: AppColors.crimsonSurface,
                 borderRadius:
@@ -430,8 +416,7 @@ class _HomeScreenState
                 AppStrings.viewAll,
                 style: AppTextStyles.labelSmall
                     .copyWith(
-                    color:
-                    AppColors.crimson),
+                    color: AppColors.crimson),
               ),
             ),
           ),
@@ -444,7 +429,7 @@ class _HomeScreenState
 
   Widget _buildTodayMatches() {
     return SizedBox(
-      height: 230,
+      height: 240,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
@@ -452,8 +437,7 @@ class _HomeScreenState
             16, 0, 16, 8),
         itemCount: mockProfiles.length,
         itemBuilder: (_, i) =>
-            _buildHorizontalCard(
-                mockProfiles[i]),
+            _buildHorizontalCard(mockProfiles[i]),
       ),
     );
   }
@@ -464,23 +448,22 @@ class _HomeScreenState
     final isSent = sentIds.contains(p.id);
 
     return GestureDetector(
-      onTap: () =>
-          context.push('/profile/${p.id}',
-              extra: p),
+      onTap: () => context.push(
+          '/profile/${p.id}',
+          extra: p),
       child: Container(
-        width: 150,
+        width: 155,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius:
-          BorderRadius.circular(16),
-          border: Border.all(
-              color: AppColors.border),
+          borderRadius: BorderRadius.circular(16),
+          border:
+          Border.all(color: AppColors.border),
           boxShadow: AppColors.softShadow,
         ),
         child: Column(
           children: [
-            // Photo area
+            // Photo
             Expanded(
               child: ClipRRect(
                 borderRadius:
@@ -490,12 +473,12 @@ class _HomeScreenState
                   fit: StackFit.expand,
                   children: [
                     Container(
-                      color: AppColors
-                          .crimsonSurface,
+                      color:
+                      AppColors.crimsonSurface,
                       child: Center(
                         child: Text(p.emoji,
                             style: const TextStyle(
-                                fontSize: 52)),
+                                fontSize: 54)),
                       ),
                     ),
                     // Premium badge
@@ -504,21 +487,30 @@ class _HomeScreenState
                         top: 8,
                         right: 8,
                         child: Container(
-                          width: 22,
-                          height: 22,
+                          width: 24,
+                          height: 24,
                           decoration:
                           BoxDecoration(
                             color: AppColors.gold,
                             shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors
+                                    .gold
+                                    .withOpacity(
+                                    0.4),
+                                blurRadius: 6,
+                              ),
+                            ],
                           ),
                           child: const Center(
                             child: Text('👑',
                                 style: TextStyle(
-                                    fontSize: 11)),
+                                    fontSize: 12)),
                           ),
                         ),
                       ),
-                    // Verified badge
+                    // Verified bar
                     if (p.isVerified)
                       Positioned(
                         bottom: 0,
@@ -529,10 +521,10 @@ class _HomeScreenState
                           const EdgeInsets
                               .symmetric(
                             horizontal: 8,
-                            vertical: 4,
+                            vertical: 5,
                           ),
                           color: AppColors.success
-                              .withOpacity(0.85),
+                              .withOpacity(0.9),
                           child: const Row(
                             mainAxisAlignment:
                             MainAxisAlignment
@@ -541,14 +533,14 @@ class _HomeScreenState
                               Icon(
                                   Icons
                                       .verified_rounded,
-                                  size: 10,
-                                  color: Colors
-                                      .white),
-                              SizedBox(width: 3),
+                                  size: 11,
+                                  color:
+                                  Colors.white),
+                              SizedBox(width: 4),
                               Text(
                                 'Verified',
                                 style: TextStyle(
-                                  fontSize: 9,
+                                  fontSize: 10,
                                   color:
                                   Colors.white,
                                   fontWeight:
@@ -573,33 +565,39 @@ class _HomeScreenState
                 CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${p.name.split(' ').first},'
-                        ' ${p.age}',
-                    style: AppTextStyles
-                        .profileNameSmall,
+                    '${p.name.split(' ').first}, ${p.age}',
+                    style:
+                    AppTextStyles.profileNameSmall,
                     maxLines: 1,
-                    overflow:
-                    TextOverflow.ellipsis,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    '${p.city} • ${p.caste}',
-                    style:
-                    AppTextStyles.bodySmall,
-                    maxLines: 1,
-                    overflow:
-                    TextOverflow.ellipsis,
-                  ),
+                  Row(children: [
+                    const Icon(
+                        Icons.location_on_outlined,
+                        size: 10,
+                        color: AppColors.muted),
+                    const SizedBox(width: 2),
+                    Expanded(
+                      child: Text(
+                        '${p.city} • ${p.caste}',
+                        style:
+                        AppTextStyles.bodySmall,
+                        maxLines: 1,
+                        overflow:
+                        TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ]),
                   const SizedBox(height: 7),
-                  // Interest button
-                  GestureDetector(
+                  _InterestButton(
+                    isSent: isSent,
                     onTap: () {
                       if (_isGuest) {
                         _showGuestModal();
                         return;
                       }
-                      HapticFeedback
-                          .lightImpact();
+                      HapticFeedback.lightImpact();
                       if (!isSent) {
                         ref
                             .read(interestsProvider
@@ -611,67 +609,6 @@ class _HomeScreenState
                         );
                       }
                     },
-                    child: AnimatedContainer(
-                      duration: const Duration(
-                          milliseconds: 200),
-                      width: double.infinity,
-                      padding:
-                      const EdgeInsets
-                          .symmetric(
-                          vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isSent
-                            ? AppColors.crimson
-                            : AppColors
-                            .crimsonSurface,
-                        borderRadius:
-                        BorderRadius.circular(
-                            8),
-                        border: isSent
-                            ? null
-                            : Border.all(
-                            color: AppColors
-                                .crimson
-                                .withOpacity(
-                                0.3)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment:
-                        MainAxisAlignment
-                            .center,
-                        children: [
-                          Icon(
-                            isSent
-                                ? Icons
-                                .favorite_rounded
-                                : Icons
-                                .favorite_border_rounded,
-                            size: 12,
-                            color: isSent
-                                ? Colors.white
-                                : AppColors
-                                .crimson,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            isSent
-                                ? AppStrings
-                                .interestSent
-                                : AppStrings
-                                .sendInterest,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight:
-                              FontWeight.w600,
-                              color: isSent
-                                  ? Colors.white
-                                  : AppColors
-                                  .crimson,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -714,13 +651,13 @@ class _HomeScreenState
     final isSent = sentIds.contains(p.id);
 
     return GestureDetector(
-      onTap: () => context
-          .push('/profile/${p.id}', extra: p),
+      onTap: () => context.push(
+          '/profile/${p.id}',
+          extra: p),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius:
-          BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(14),
           border:
           Border.all(color: AppColors.border),
           boxShadow: AppColors.softShadow,
@@ -738,12 +675,11 @@ class _HomeScreenState
                   fit: StackFit.expand,
                   children: [
                     Container(
-                      color: AppColors
-                          .crimsonSurface,
+                      color:
+                      AppColors.crimsonSurface,
                       child: Center(
                         child: Text(p.emoji,
-                            style:
-                            const TextStyle(
+                            style: const TextStyle(
                                 fontSize: 48)),
                       ),
                     ),
@@ -780,17 +716,14 @@ class _HomeScreenState
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight:
-                                  FontWeight
-                                      .w700,
-                                  color:
-                                  Colors.white,
+                                  FontWeight.w700,
+                                  color: Colors.white,
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                    // New badge
                     Positioned(
                       top: 8,
                       right: 8,
@@ -831,24 +764,20 @@ class _HomeScreenState
                 CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${p.name.split(' ').first},'
-                        ' ${p.age}',
-                    style: AppTextStyles
-                        .profileNameSmall,
+                    '${p.name.split(' ').first}, ${p.age}',
+                    style:
+                    AppTextStyles.profileNameSmall,
                     maxLines: 1,
-                    overflow:
-                    TextOverflow.ellipsis,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     p.profession,
                     style: AppTextStyles.bodySmall
                         .copyWith(
-                        color:
-                        AppColors.inkSoft),
+                        color: AppColors.inkSoft),
                     maxLines: 1,
-                    overflow:
-                    TextOverflow.ellipsis,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Row(children: [
@@ -856,7 +785,7 @@ class _HomeScreenState
                         Icons.location_on_outlined,
                         size: 10,
                         color: AppColors.muted),
-                    const SizedBox(width: 3),
+                    const SizedBox(width: 2),
                     Expanded(
                       child: Text(
                         p.city,
@@ -869,7 +798,8 @@ class _HomeScreenState
                     ),
                   ]),
                   const SizedBox(height: 8),
-                  GestureDetector(
+                  _InterestButton(
+                    isSent: isSent,
                     onTap: () {
                       if (_isGuest) {
                         _showGuestModal();
@@ -887,57 +817,6 @@ class _HomeScreenState
                         );
                       }
                     },
-                    child: AnimatedContainer(
-                      duration: const Duration(
-                          milliseconds: 200),
-                      width: double.infinity,
-                      padding:
-                      const EdgeInsets.symmetric(
-                          vertical: 7),
-                      decoration: BoxDecoration(
-                        color: isSent
-                            ? AppColors.crimson
-                            : AppColors.crimsonSurface,
-                        borderRadius:
-                        BorderRadius.circular(8),
-                        border: isSent
-                            ? null
-                            : Border.all(
-                            color: AppColors
-                                .crimson
-                                .withOpacity(
-                                0.3)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment:
-                        MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            isSent
-                                ? Icons.favorite_rounded
-                                : Icons
-                                .favorite_border_rounded,
-                            size: 12,
-                            color: isSent
-                                ? Colors.white
-                                : AppColors.crimson,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            isSent
-                                ? AppStrings.interestSent
-                                : AppStrings.sendInterest,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: isSent
-                                  ? Colors.white
-                                  : AppColors.crimson,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -974,13 +853,11 @@ class _HomeScreenState
             CrossAxisAlignment.start,
             children: [
               Container(
-                padding:
-                const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white
-                      .withOpacity(0.2),
+                  color:
+                  Colors.white.withOpacity(0.2),
                   borderRadius:
                   BorderRadius.circular(100),
                 ),
@@ -1018,10 +895,8 @@ class _HomeScreenState
                 onTap: () =>
                     context.push('/premium'),
                 child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius:
@@ -1052,14 +927,14 @@ class _HomeScreenState
   Widget _buildGuestBanner() {
     return Container(
       margin: const EdgeInsets.fromLTRB(
-          16, 12, 16, 0),
+          16, 16, 16, 0),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.crimsonSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-            color: AppColors.crimson
-                .withOpacity(0.25)),
+            color:
+            AppColors.crimson.withOpacity(0.25)),
       ),
       child: Row(children: [
         const Text('🔒',
@@ -1088,7 +963,7 @@ class _HomeScreenState
           onTap: () => context.go('/phone'),
           child: Container(
             padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 7),
+                horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: AppColors.crimson,
               borderRadius:
@@ -1119,18 +994,83 @@ class _HomeScreenState
 }
 
 // ─────────────────────────────────────────────────────────
-// PRIVATE WIDGETS
+// INTEREST BUTTON — Reusable widget
 // ─────────────────────────────────────────────────────────
 
-class _TopBarIcon extends StatelessWidget {
-  final IconData icon;
+class _InterestButton extends StatelessWidget {
+  final bool isSent;
+  final VoidCallback onTap;
+
+  const _InterestButton({
+    required this.isSent,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration:
+        const Duration(milliseconds: 200),
+        width: double.infinity,
+        padding:
+        const EdgeInsets.symmetric(vertical: 7),
+        decoration: BoxDecoration(
+          color: isSent
+              ? AppColors.crimson
+              : AppColors.crimsonSurface,
+          borderRadius: BorderRadius.circular(8),
+          border: isSent
+              ? null
+              : Border.all(
+              color: AppColors.crimson
+                  .withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment:
+          MainAxisAlignment.center,
+          children: [
+            Icon(
+              isSent
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
+              size: 12,
+              color: isSent
+                  ? Colors.white
+                  : AppColors.crimson,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              isSent
+                  ? AppStrings.interestSent
+                  : AppStrings.sendInterest,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: isSent
+                    ? Colors.white
+                    : AppColors.crimson,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// NOTIFICATION BELL
+// ─────────────────────────────────────────────────────────
+
+class _NotificationBell extends StatelessWidget {
   final int badgeCount;
   final VoidCallback onTap;
 
-  const _TopBarIcon({
-    required this.icon,
+  const _NotificationBell({
+    required this.badgeCount,
     required this.onTap,
-    this.badgeCount = 0,
   });
 
   @override
@@ -1138,26 +1078,29 @@ class _TopBarIcon extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 38,
-        height: 38,
+        width: 42,
+        height: 42,
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Center(
-              child: Icon(icon,
-                  size: 20, color: Colors.white),
+            const Center(
+              child: Icon(
+                Icons.notifications_outlined,
+                size: 22,
+                color: Colors.white,
+              ),
             ),
             if (badgeCount > 0)
               Positioned(
                 top: -3,
                 right: -3,
                 child: Container(
-                  width: 16,
-                  height: 16,
+                  width: 18,
+                  height: 18,
                   decoration: BoxDecoration(
                     color: AppColors.error,
                     shape: BoxShape.circle,
@@ -1186,60 +1129,6 @@ class _TopBarIcon extends StatelessWidget {
   }
 }
 
-class _ActivityChip extends StatelessWidget {
-  final String emoji;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ActivityChip({
-    required this.emoji,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(emoji,
-                style:
-                const TextStyle(fontSize: 20)),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Divider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 32,
-      color: AppColors.border,
-    );
-  }
-}
-
 // ─────────────────────────────────────────────────────────
 // GUEST MODAL
 // ─────────────────────────────────────────────────────────
@@ -1262,7 +1151,6 @@ class _GuestModal extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle
           Center(
             child: Container(
               width: 40,
@@ -1276,7 +1164,6 @@ class _GuestModal extends StatelessWidget {
               ),
             ),
           ),
-          // Emoji
           Container(
             width: 72,
             height: 72,
@@ -1303,30 +1190,22 @@ class _GuestModal extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
-          // Benefits
           ...[
-            (
-            Icons.photo_library_outlined,
-            AppStrings.viewUnlimited
-            ),
-            (
-            Icons.favorite_outline_rounded,
-            AppStrings.sendReceive
-            ),
-            (
-            Icons.chat_bubble_outline_rounded,
-            AppStrings.chatDirectlyFull
-            ),
+            (Icons.photo_library_outlined,
+            AppStrings.viewUnlimited),
+            (Icons.favorite_outline_rounded,
+            AppStrings.sendReceive),
+            (Icons.chat_bubble_outline_rounded,
+            AppStrings.chatDirectlyFull),
           ].map((item) => Padding(
-            padding: const EdgeInsets.only(
-                bottom: 10),
+            padding:
+            const EdgeInsets.only(bottom: 10),
             child: Row(children: [
               Container(
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color:
-                  AppColors.crimsonSurface,
+                  color: AppColors.crimsonSurface,
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -1337,12 +1216,11 @@ class _GuestModal extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Text(item.$2,
-                  style: AppTextStyles
-                      .labelMedium),
+                  style:
+                  AppTextStyles.labelMedium),
             ]),
           )),
           const SizedBox(height: 20),
-          // Register button
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -1369,7 +1247,6 @@ class _GuestModal extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          // Maybe later
           TextButton(
             onPressed: () =>
                 Navigator.pop(context),

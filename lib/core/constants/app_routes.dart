@@ -38,6 +38,21 @@ import 'package:rishta_app/presentation/chat/chat_window_screen.dart';
 import 'package:rishta_app/presentation/placeholder_screens.dart';
 import 'package:rishta_app/presentation/interests/interests_screen.dart';
 
+// ── PROFILE SCREENS ───────────────────────────────────────
+import 'package:rishta_app/presentation/profile/shortlisted_screen.dart';
+import 'package:rishta_app/presentation/profile/who_viewed_screen.dart';
+import 'package:rishta_app/presentation/profile/partner_preference_screen.dart';
+import 'package:rishta_app/presentation/profile/horoscope_screen.dart';
+import 'package:rishta_app/presentation/profile/id_verification_screen.dart';
+import 'package:rishta_app/presentation/profile/blocked_users_screen.dart';
+
+// ── SETTINGS SCREENS ──────────────────────────────────────
+import 'package:rishta_app/presentation/settings/notifications_screen.dart';
+import 'package:rishta_app/presentation/settings/premium_screen.dart';
+import 'package:rishta_app/presentation/settings/privacy_screen.dart';
+import 'package:rishta_app/presentation/settings/help_support_screen.dart';
+import 'package:rishta_app/presentation/settings/delete_account_screen.dart';
+
 // ─────────────────────────────────────────────────────────
 // ROUTE PATHS
 // Single source of truth for all route strings

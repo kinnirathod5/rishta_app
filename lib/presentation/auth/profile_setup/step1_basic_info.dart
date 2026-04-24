@@ -1,6 +1,7 @@
 // lib/presentation/auth/profile_setup/step1_basic_info.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:rishta_app/core/constants/app_colors.dart';
@@ -11,13 +12,13 @@ import 'package:rishta_app/core/widgets/custom_button.dart';
 import 'package:rishta_app/core/widgets/custom_text_field.dart';
 import 'package:rishta_app/core/widgets/loading_overlay.dart';
 import 'package:rishta_app/data/models/profile_model.dart';
-import 'package:rishta_app/providers/auth_provider.dart';
 import 'package:rishta_app/providers/profile_provider.dart';
 
 // ─────────────────────────────────────────────────────────
 // STEP 1 — BASIC INFO
-// Fields: Full Name, DOB, Height, City,
-//         Mother Tongue, About Me
+// Fields: Full Name, Gender, DOB, Height,
+//         Current City, Native City,
+//         Mother Tongue, Marital Status, About Me
 // ─────────────────────────────────────────────────────────
 
 class Step1BasicInfo extends ConsumerStatefulWidget {
@@ -39,23 +40,23 @@ class _Step1BasicInfoState
   // Controllers
   final _nameCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
-  final _aboutCtrl = TextEditingController();
   final _nativeCityCtrl = TextEditingController();
+  final _aboutCtrl = TextEditingController();
 
   // Focus nodes
   final _nameFocus = FocusNode();
   final _cityFocus = FocusNode();
   final _aboutFocus = FocusNode();
 
-  // Dropdown values
+  // Values
   DateTime? _dob;
   int? _heightFeet;
   int? _heightInches;
+  String? _gender;
   String? _motherTongue;
   String? _maritalStatus;
-  String? _gender;
 
-  // Error states
+  // Errors
   String? _dobError;
   String? _heightError;
 
@@ -69,14 +70,15 @@ class _Step1BasicInfoState
     super.initState();
     _setupAnimation();
     _ctrl.forward();
-    // Read profileFor from extra
     _gender = _detectGender();
+    _loadExisting();
   }
 
   void _setupAnimation() {
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration:
+      const Duration(milliseconds: 450),
     );
     _fade = CurvedAnimation(
         parent: _ctrl, curve: Curves.easeOut);
@@ -87,11 +89,10 @@ class _Step1BasicInfoState
         parent: _ctrl, curve: Curves.easeOut));
   }
 
-  // Auto-detect gender from profileFor
+  // Gender auto-detect from profileFor
   String? _detectGender() {
     final profileFor =
     widget.extra?['profileFor'] as String?;
-    if (profileFor == null) return null;
     switch (profileFor) {
       case 'daughter':
       case 'sister':
@@ -104,13 +105,41 @@ class _Step1BasicInfoState
     }
   }
 
+  void _loadExisting() {
+    final profile =
+    ref.read(currentProfileProvider);
+    if (profile == null) return;
+
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _nameCtrl.text = profile.fullName;
+        _cityCtrl.text = profile.currentCity;
+        _nativeCityCtrl.text =
+            profile.nativeCity ?? '';
+        _aboutCtrl.text = profile.about ?? '';
+        if (profile.heightInInches > 0) {
+          _heightFeet =
+              profile.heightInInches ~/ 12;
+          _heightInches =
+              profile.heightInInches % 12;
+        }
+        _motherTongue =
+        profile.motherTongue.isNotEmpty
+            ? profile.motherTongue
+            : null;
+      });
+    });
+  }
+
   @override
   void dispose() {
     _ctrl.dispose();
     _nameCtrl.dispose();
     _cityCtrl.dispose();
-    _aboutCtrl.dispose();
     _nativeCityCtrl.dispose();
+    _aboutCtrl.dispose();
     _nameFocus.dispose();
     _cityFocus.dispose();
     _aboutFocus.dispose();
@@ -120,23 +149,24 @@ class _Step1BasicInfoState
   // ── VALIDATION ────────────────────────────────────────
 
   bool _validate() {
-    bool valid = _formKey.currentState?.validate() ?? false;
+    final formValid =
+        _formKey.currentState?.validate() ??
+            false;
 
-    // DOB validation
     final dobErr = Validators.dateOfBirth(_dob);
     setState(() => _dobError = dobErr);
-    if (dobErr != null) valid = false;
 
-    // Height validation
     if (_heightFeet == null) {
       setState(() =>
-      _heightError = AppStrings.heightRequired);
-      valid = false;
+      _heightError =
+          AppStrings.heightRequired);
     } else {
       setState(() => _heightError = null);
     }
 
-    return valid;
+    return formValid &&
+        dobErr == null &&
+        _heightFeet != null;
   }
 
   // ── DATE PICKER ───────────────────────────────────────
@@ -144,14 +174,15 @@ class _Step1BasicInfoState
   Future<void> _pickDob() async {
     final now = DateTime.now();
     final initial = _dob ??
-        DateTime(now.year - 25, now.month, now.day);
+        DateTime(
+            now.year - 25, now.month, now.day);
 
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
       firstDate: DateTime(now.year - 80),
-      lastDate: DateTime(now.year - 18,
-          now.month, now.day),
+      lastDate: DateTime(
+          now.year - 18, now.month, now.day),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: const ColorScheme.light(
@@ -172,7 +203,8 @@ class _Step1BasicInfoState
     if (picked != null) {
       setState(() {
         _dob = picked;
-        _dobError = Validators.dateOfBirth(picked);
+        _dobError =
+            Validators.dateOfBirth(picked);
       });
     }
   }
@@ -183,15 +215,14 @@ class _Step1BasicInfoState
     FocusScope.of(context).unfocus();
     if (!_validate()) return;
 
-    final uid = ref.read(currentUidProvider);
-    if (uid == null) return;
-
     final totalInches =
-        (_heightFeet! * 12) + (_heightInches ?? 0);
+        (_heightFeet! * 12) +
+            (_heightInches ?? 0);
 
-    final profileFor = widget.extra?['profileFor']
-    as String? ??
-        ProfileFor.self.value;
+    final profileFor =
+        widget.extra?['profileFor']
+        as String? ??
+            ProfileFor.self.value;
 
     final data = {
       'profileFor': profileFor,
@@ -199,20 +230,16 @@ class _Step1BasicInfoState
       'dateOfBirth': _dob!.toIso8601String(),
       'heightInInches': totalInches,
       'currentCity': _cityCtrl.text.trim(),
-      'nativeCity': _nativeCityCtrl.text.trim(),
+      'nativeCity':
+      _nativeCityCtrl.text.trim(),
       'about': _aboutCtrl.text.trim(),
+      if (_gender != null) 'gender': _gender,
       if (_motherTongue != null)
         'motherTongue': _motherTongue,
       if (_maritalStatus != null)
         'maritalStatus': _maritalStatus,
     };
 
-    final hasProfile =
-    ref.read(hasProfileProvider);
-
-    // updateProfile handles both create and update
-    final profileId =
-        ref.read(currentProfileProvider)?.id ?? uid;
     final ok = await ref
         .read(myProfileProvider.notifier)
         .updateProfile(data);
@@ -223,7 +250,8 @@ class _Step1BasicInfoState
     } else {
       final error =
           ref.read(myProfileProvider).error;
-      _showError(error ?? 'Something went wrong');
+      _showError(
+          error ?? 'Kuch galat hua. Dobara try karein.');
     }
   }
 
@@ -238,15 +266,18 @@ class _Step1BasicInfoState
         shape: RoundedRectangleBorder(
             borderRadius:
             BorderRadius.circular(10)),
+        duration:
+        const Duration(seconds: 3),
       ),
     );
   }
 
+  // ── BUILD ─────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    final isSaving = ref
-        .watch(myProfileProvider)
-        .isSaving;
+    final isSaving =
+        ref.watch(myProfileProvider).isSaving;
 
     return Scaffold(
       backgroundColor: AppColors.ivory,
@@ -256,68 +287,74 @@ class _Step1BasicInfoState
             opacity: _fade,
             child: SlideTransition(
               position: _slide,
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    _buildHeader(),
-                    _buildProgressBar(step: 1),
-                    Expanded(
-                      child: Form(
-                        key: _formKey,
-                        child: SingleChildScrollView(
-                          padding:
-                          const EdgeInsets
-                              .fromLTRB(
-                              24, 24, 24, 100),
-                          physics:
-                          const BouncingScrollPhysics(),
-                          child: Column(
-                            crossAxisAlignment:
-                            CrossAxisAlignment
-                                .start,
-                            children: [
-                              _buildStepTitle(),
-                              const SizedBox(
-                                  height: 24),
-                              _buildNameField(),
-                              const SizedBox(
-                                  height: 18),
-                              _buildGenderField(),
-                              const SizedBox(
-                                  height: 18),
-                              _buildDobField(),
-                              const SizedBox(
-                                  height: 18),
-                              _buildHeightField(),
-                              const SizedBox(
-                                  height: 18),
-                              _buildCityField(),
-                              const SizedBox(
-                                  height: 18),
-                              _buildNativeCityField(),
-                              const SizedBox(
-                                  height: 18),
-                              _buildMotherTongue(),
-                              const SizedBox(
-                                  height: 18),
-                              _buildMaritalStatus(),
-                              const SizedBox(
-                                  height: 18),
-                              _buildAboutField(),
-                              const SizedBox(
-                                  height: 8),
-                              _buildAboutCounter(),
-                            ],
-                          ),
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  _buildProgressBar(),
+                  Expanded(
+                    child: Form(
+                      key: _formKey,
+                      child: SingleChildScrollView(
+                        padding:
+                        const EdgeInsets
+                            .fromLTRB(
+                            20, 20,
+                            20, 100),
+                        physics:
+                        const BouncingScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment:
+                          CrossAxisAlignment
+                              .start,
+                          children: [
+                            _buildStepTitle(),
+                            const SizedBox(
+                                height: 24),
+                            _buildNameField(),
+                            const SizedBox(
+                                height: 16),
+                            _buildGenderField(),
+                            const SizedBox(
+                                height: 20),
+                            _buildDobField(),
+                            const SizedBox(
+                                height: 16),
+                            _buildHeightField(),
+                            const SizedBox(
+                                height: 16),
+                            _buildCityField(),
+                            const SizedBox(
+                                height: 16),
+                            _buildNativeCityField(),
+                            const SizedBox(
+                                height: 16),
+                            _buildMotherTongueField(),
+                            const SizedBox(
+                                height: 16),
+                            _buildMaritalStatusField(),
+                            const SizedBox(
+                                height: 16),
+                            _buildAboutField(),
+                            const SizedBox(
+                                height: 6),
+                            _buildAboutCounter(),
+                          ],
                         ),
                       ),
                     ),
-                    _buildBottomBar(isSaving),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
+          // Bottom bar
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: _buildBottomBar(isSaving),
+          ),
+          // Loading overlay
           if (isSaving)
             const LoadingOverlay(
               message: 'Saving...',
@@ -331,22 +368,23 @@ class _Step1BasicInfoState
   // ── HEADER ────────────────────────────────────────────
 
   Widget _buildHeader() {
+    final topPad =
+        MediaQuery.of(context).padding.top;
     return Container(
       color: AppColors.crimson,
       padding: EdgeInsets.fromLTRB(
-        16,
-        MediaQuery.of(context).padding.top + 8,
-        16,
-        12,
-      ),
+          16, topPad + 10, 16, 12),
       child: Row(children: [
+        // Back button
         GestureDetector(
-          onTap: () => context.go('/profile-type'),
+          onTap: () =>
+              context.go('/profile-type'),
           child: Container(
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color:
+              Colors.white.withOpacity(0.18),
               borderRadius:
               BorderRadius.circular(10),
             ),
@@ -360,6 +398,7 @@ class _Step1BasicInfoState
           ),
         ),
         const SizedBox(width: 12),
+        // Step info
         Expanded(
           child: Column(
             crossAxisAlignment:
@@ -378,14 +417,14 @@ class _Step1BasicInfoState
                 'Basic Information',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
               ),
             ],
           ),
         ),
-        // Skip button
+        // Skip
         GestureDetector(
           onTap: () => context.go('/home'),
           child: Container(
@@ -398,7 +437,7 @@ class _Step1BasicInfoState
               BorderRadius.circular(100),
             ),
             child: Text(
-              'Skip for now',
+              'Skip',
               style: TextStyle(
                 fontSize: 11,
                 color:
@@ -414,39 +453,31 @@ class _Step1BasicInfoState
 
   // ── PROGRESS BAR ──────────────────────────────────────
 
-  Widget _buildProgressBar({required int step}) {
+  Widget _buildProgressBar() {
     return Container(
       color: AppColors.crimson,
       padding: const EdgeInsets.fromLTRB(
           16, 0, 16, 12),
-      child: Column(
-        children: [
-          // Step dots
-          Row(
-            children: List.generate(5, (i) {
-              final isDone = i < step - 1;
-              final isCurrent = i == step - 1;
-              return Expanded(
-                child: Container(
-                  margin: EdgeInsets.only(
-                      right: i < 4 ? 4 : 0),
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: isDone
-                        ? Colors.white
-                        : isCurrent
-                        ? Colors.white
-                        .withOpacity(0.9)
-                        : Colors.white
-                        .withOpacity(0.25),
-                    borderRadius:
-                    BorderRadius.circular(2),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ],
+      child: Row(
+        children: List.generate(5, (i) {
+          final isDone = i < 0;
+          final isCurrent = i == 0;
+          return Expanded(
+            child: Container(
+              margin: EdgeInsets.only(
+                  right: i < 4 ? 4 : 0),
+              height: 4,
+              decoration: BoxDecoration(
+                color: isCurrent || isDone
+                    ? Colors.white
+                    : Colors.white
+                    .withOpacity(0.25),
+                borderRadius:
+                BorderRadius.circular(2),
+              ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -460,10 +491,8 @@ class _Step1BasicInfoState
         const Text('👤',
             style: TextStyle(fontSize: 36)),
         const SizedBox(height: 10),
-        Text(
-          AppStrings.basicInfo,
-          style: AppTextStyles.h3,
-        ),
+        Text(AppStrings.basicInfo,
+            style: AppTextStyles.h3),
         const SizedBox(height: 6),
         Text(
           AppStrings.basicInfoSub,
@@ -488,13 +517,15 @@ class _Step1BasicInfoState
   Widget _buildGenderField() {
     return AppDropdownField<String>(
       label: 'Gender',
-      hint: 'Select gender',
+      hint: 'Select your gender',
       value: _gender,
       required: true,
       items: const ['Male', 'Female', 'Other'],
       prefixIcon: Icons.wc_rounded,
-      validator: (v) => Validators.dropdown(v,
-          errorMessage: 'Please select gender'),
+      validator: (v) => Validators.dropdown(
+          v,
+          errorMessage:
+          'Please select your gender'),
       onChanged: (v) =>
           setState(() => _gender = v),
     );
@@ -504,22 +535,26 @@ class _Step1BasicInfoState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Label — same style as AppDropdownField
         Row(children: [
-          Text(AppStrings.dateOfBirth,
-              style: AppTextStyles.inputLabel),
-          Text(' *',
-              style: AppTextStyles.inputLabel
-                  .copyWith(
-                  color: AppColors.crimson)),
+          Text(
+            AppStrings.dateOfBirth,
+            style: AppTextStyles.inputLabel,
+          ),
+          Text(
+            ' *',
+            style: AppTextStyles.inputLabel
+                .copyWith(color: AppColors.crimson),
+          ),
         ]),
         const SizedBox(height: 7),
+
+        // Date picker — styled exactly like dropdown
         GestureDetector(
           onTap: _pickDob,
           child: AnimatedContainer(
             duration:
             const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(
-                horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: AppColors.white,
               borderRadius:
@@ -528,68 +563,81 @@ class _Step1BasicInfoState
                 color: _dobError != null
                     ? AppColors.error
                     : AppColors.border,
-                width: _dobError != null ? 2 : 1.5,
+                width: 1.5,
               ),
             ),
-            child: Row(children: [
-              Icon(
-                Icons.calendar_today_outlined,
-                size: 18,
-                color: _dob != null
-                    ? AppColors.crimson
-                    : AppColors.muted,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  _dob != null
-                      ? _formatDob(_dob!)
-                      : AppStrings.dobHint,
-                  style: _dob != null
-                      ? AppTextStyles.inputText
-                      : AppTextStyles.inputHint,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 14),
+              child: Row(children: [
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 18,
+                  color: _dob != null
+                      ? AppColors.crimson
+                      : AppColors.muted,
                 ),
-              ),
-              if (_dob != null)
-                Container(
-                  padding:
-                  const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.crimsonSurface,
-                    borderRadius:
-                    BorderRadius.circular(100),
-                  ),
+                const SizedBox(width: 12),
+                Expanded(
                   child: Text(
-                    '${_calculateAge(_dob!)} yrs',
-                    style: AppTextStyles
-                        .labelSmall
-                        .copyWith(
-                        color:
-                        AppColors.crimson),
+                    _dob != null
+                        ? _formatDob(_dob!)
+                        : AppStrings.dobHint,
+                    style: _dob != null
+                        ? AppTextStyles.inputText
+                        : AppTextStyles.inputHint,
                   ),
                 ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 14,
-                color: AppColors.muted,
-              ),
-            ]),
+                if (_dob != null) ...[
+                  Container(
+                    padding:
+                    const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3),
+                    decoration: BoxDecoration(
+                      color:
+                      AppColors.crimsonSurface,
+                      borderRadius:
+                      BorderRadius.circular(
+                          100),
+                    ),
+                    child: Text(
+                      '${_calculateAge(_dob!)} yrs',
+                      style: AppTextStyles
+                          .labelSmall
+                          .copyWith(
+                          color:
+                          AppColors.crimson),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 20,
+                  color: AppColors.muted,
+                ),
+              ]),
+            ),
           ),
         ),
+
+        // Error text
         if (_dobError != null)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(
+                top: 6, left: 4),
             child: Row(children: [
               const Icon(
-                  Icons.error_outline_rounded,
-                  size: 13,
-                  color: AppColors.error),
+                Icons.error_outline_rounded,
+                size: 13,
+                color: AppColors.error,
+              ),
               const SizedBox(width: 5),
-              Text(_dobError!,
-                  style: AppTextStyles.inputError),
+              Text(
+                _dobError!,
+                style: AppTextStyles.inputError,
+              ),
             ]),
           ),
       ],
@@ -600,44 +648,46 @@ class _Step1BasicInfoState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Label
         Row(children: [
-          Text(AppStrings.height,
-              style: AppTextStyles.inputLabel),
+          Text(
+            AppStrings.height,
+            style: AppTextStyles.inputLabel,
+          ),
           Text(' *',
               style: AppTextStyles.inputLabel
                   .copyWith(
                   color: AppColors.crimson)),
         ]),
         const SizedBox(height: 7),
+        // Two dropdowns
         Row(children: [
-          // Feet
           Expanded(
             child: AppDropdownField<int>(
               hint: "Feet",
               value: _heightFeet,
-              items: List.generate(4, (i) => i + 4),
-              itemLabel: (v) => "$v' feet",
-              onChanged: (v) {
-                setState(() {
-                  _heightFeet = v;
-                  _heightError = null;
-                });
-              },
+              items:
+              List.generate(4, (i) => i + 4),
+              itemLabel: (v) => "$v'  feet",
+              onChanged: (v) => setState(() {
+                _heightFeet = v;
+                _heightError = null;
+              }),
             ),
           ),
           const SizedBox(width: 12),
-          // Inches
           Expanded(
             child: AppDropdownField<int>(
               hint: 'Inches',
               value: _heightInches,
               items: List.generate(12, (i) => i),
-              itemLabel: (v) => '$v" inches',
-              onChanged: (v) =>
-                  setState(() => _heightInches = v),
+              itemLabel: (v) => '$v"  inches',
+              onChanged: (v) => setState(
+                      () => _heightInches = v),
             ),
           ),
         ]),
+        // Live cm display
         if (_heightFeet != null) ...[
           const SizedBox(height: 6),
           Row(children: [
@@ -648,7 +698,7 @@ class _Step1BasicInfoState
             ),
             const SizedBox(width: 5),
             Text(
-              "$_heightFeet'${_heightInches ?? 0}\" "
+              "$_heightFeet' ${_heightInches ?? 0}\"  "
                   "(${((_heightFeet! * 12 + (_heightInches ?? 0)) * 2.54).round()} cm)",
               style: AppTextStyles.bodySmall
                   .copyWith(
@@ -656,17 +706,21 @@ class _Step1BasicInfoState
             ),
           ]),
         ],
+        // Error
         if (_heightError != null)
           Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(
+                top: 6, left: 4),
             child: Row(children: [
               const Icon(
-                  Icons.error_outline_rounded,
-                  size: 13,
-                  color: AppColors.error),
+                Icons.error_outline_rounded,
+                size: 13,
+                color: AppColors.error,
+              ),
               const SizedBox(width: 5),
               Text(_heightError!,
-                  style: AppTextStyles.inputError),
+                  style:
+                  AppTextStyles.inputError),
             ]),
           ),
       ],
@@ -687,11 +741,13 @@ class _Step1BasicInfoState
       hint: 'e.g. Lucknow, Patna, Jaipur',
       controller: _nativeCityCtrl,
       prefixIcon: Icons.location_city_outlined,
-      textCapitalization: TextCapitalization.words,
+      textCapitalization:
+      TextCapitalization.words,
+      helperText: 'Optional',
     );
   }
 
-  Widget _buildMotherTongue() {
+  Widget _buildMotherTongueField() {
     return AppDropdownField<String>(
       label: AppStrings.motherTongue,
       hint: AppStrings.motherTongueHint,
@@ -703,12 +759,13 @@ class _Step1BasicInfoState
         'Odia', 'Urdu', 'English', 'Other',
       ],
       prefixIcon: Icons.language_outlined,
+      helperText: 'Optional',
       onChanged: (v) =>
           setState(() => _motherTongue = v),
     );
   }
 
-  Widget _buildMaritalStatus() {
+  Widget _buildMaritalStatusField() {
     return AppDropdownField<String>(
       label: 'Marital Status',
       hint: 'Select marital status',
@@ -734,6 +791,7 @@ class _Step1BasicInfoState
         }
       },
       prefixIcon: Icons.favorite_outline_rounded,
+      helperText: 'Optional',
       onChanged: (v) =>
           setState(() => _maritalStatus = v),
     );
@@ -762,7 +820,7 @@ class _Step1BasicInfoState
           MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Optional — A good bio gets more responses',
+              'Optional — Good bio pe zyada reply',
               style: AppTextStyles.bodySmall,
             ),
             Text(
@@ -772,6 +830,9 @@ class _Step1BasicInfoState
                 color: isNear
                     ? AppColors.warning
                     : AppColors.muted,
+                fontWeight: isNear
+                    ? FontWeight.w600
+                    : FontWeight.w400,
               ),
             ),
           ],
@@ -785,10 +846,11 @@ class _Step1BasicInfoState
   Widget _buildBottomBar(bool isSaving) {
     return Container(
       padding: EdgeInsets.fromLTRB(
-        24,
+        20,
         12,
-        24,
-        MediaQuery.of(context).padding.bottom + 16,
+        20,
+        MediaQuery.of(context).padding.bottom +
+            16,
       ),
       decoration: const BoxDecoration(
         color: AppColors.white,
@@ -799,19 +861,18 @@ class _Step1BasicInfoState
         boxShadow: AppColors.modalShadow,
       ),
       child: Row(children: [
-        // Step dots
+        // Progress dots
         Expanded(
           child: Row(
             children: List.generate(5, (i) {
-              final isActive = i == 0;
-              final isDone = false;
+              final isCurrent = i == 0;
               return Container(
-                margin:
-                const EdgeInsets.only(right: 6),
-                width: isActive ? 20 : 8,
+                margin: const EdgeInsets.only(
+                    right: 6),
+                width: isCurrent ? 20 : 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: isActive
+                  color: isCurrent
                       ? AppColors.crimson
                       : AppColors.border,
                   borderRadius:
@@ -825,9 +886,11 @@ class _Step1BasicInfoState
         // Next button
         SizedBox(
           width: 140,
-          height: 48,
+          height: 50,
           child: PrimaryButton(
-            label: isSaving ? 'Saving...' : 'Next',
+            label: isSaving
+                ? 'Saving...'
+                : 'Next',
             icon: isSaving
                 ? null
                 : Icons.arrow_forward_rounded,
@@ -842,8 +905,10 @@ class _Step1BasicInfoState
   // ── HELPERS ───────────────────────────────────────────
 
   String _formatDob(DateTime dob) {
-    final d = dob.day.toString().padLeft(2, '0');
-    final m = dob.month.toString().padLeft(2, '0');
+    final d =
+    dob.day.toString().padLeft(2, '0');
+    final m =
+    dob.month.toString().padLeft(2, '0');
     return '$d / $m / ${dob.year}';
   }
 
