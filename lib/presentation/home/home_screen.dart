@@ -11,47 +11,7 @@ import 'package:rishta_app/providers/auth_provider.dart';
 import 'package:rishta_app/providers/app_state_provider.dart';
 import 'package:rishta_app/providers/interest_provider.dart';
 import 'package:rishta_app/providers/profile_provider.dart';
-
-// ─────────────────────────────────────────────────────────
-// MOCK DATA
-// ─────────────────────────────────────────────────────────
-
-class MockProfile {
-  final String id;
-  final String name;
-  final int age;
-  final String caste;
-  final String city;
-  final String profession;
-  final String emoji;
-  final bool isVerified;
-  final bool isPremium;
-
-  const MockProfile({
-    required this.id,
-    required this.name,
-    required this.age,
-    required this.caste,
-    required this.city,
-    required this.profession,
-    required this.emoji,
-    required this.isVerified,
-    required this.isPremium,
-  });
-}
-
-const List<MockProfile> mockProfiles = [
-  MockProfile(id: '1',  name: 'Priya Sharma',   age: 26, caste: 'Brahmin',  city: 'Delhi',      profession: 'Software Engineer', emoji: '👩',    isVerified: true,  isPremium: false),
-  MockProfile(id: '2',  name: 'Anjali Gupta',   age: 24, caste: 'Kayastha', city: 'Mumbai',     profession: 'Marketing Manager', emoji: '👩‍💼', isVerified: false, isPremium: true),
-  MockProfile(id: '3',  name: 'Meera Singh',    age: 28, caste: 'Rajput',   city: 'Jaipur',     profession: 'Doctor',            emoji: '👩‍⚕️', isVerified: true,  isPremium: true),
-  MockProfile(id: '4',  name: 'Sneha Patel',    age: 25, caste: 'Patel',    city: 'Ahmedabad',  profession: 'CA',                emoji: '👩‍🏫', isVerified: true,  isPremium: false),
-  MockProfile(id: '5',  name: 'Ritu Verma',     age: 27, caste: 'Brahmin',  city: 'Lucknow',    profession: 'IIT Graduate',      emoji: '👩‍🔬', isVerified: true,  isPremium: false),
-  MockProfile(id: '6',  name: 'Pooja Iyer',     age: 23, caste: 'Iyer',     city: 'Chennai',    profession: 'Dentist',           emoji: '🧑‍⚕️', isVerified: false, isPremium: false),
-  MockProfile(id: '7',  name: 'Kavya Reddy',    age: 26, caste: 'Reddy',    city: 'Hyderabad',  profession: 'Data Scientist',    emoji: '👩‍💻', isVerified: true,  isPremium: true),
-  MockProfile(id: '8',  name: 'Nisha Jain',     age: 25, caste: 'Jain',     city: 'Pune',       profession: 'Business',          emoji: '👩‍🚀', isVerified: false, isPremium: false),
-  MockProfile(id: '9',  name: 'Arya Nair',      age: 27, caste: 'Nair',     city: 'Kochi',      profession: 'Professor',         emoji: '👩‍🏫', isVerified: true,  isPremium: false),
-  MockProfile(id: '10', name: 'Simran Kaur',    age: 24, caste: 'Jat Sikh', city: 'Chandigarh', profession: 'Civil Services',    emoji: '👩‍✈️', isVerified: true,  isPremium: true),
-];
+import 'package:rishta_app/data/mock/mock_profiles.dart';
 
 // ─────────────────────────────────────────────────────────
 // HOME SCREEN
@@ -100,6 +60,7 @@ class _HomeScreenState
   Widget build(BuildContext context) {
     final unreadCount =
     ref.watch(unreadNotificationsCountProvider);
+    final isPremium = ref.watch(isPremiumActiveProvider);
 
     return Scaffold(
       backgroundColor: AppColors.ivory,
@@ -114,7 +75,7 @@ class _HomeScreenState
           physics: const BouncingScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
-                child: _buildTopBar(unreadCount)),
+                child: _buildTopBar(unreadCount, isPremium)),
             SliverToBoxAdapter(
                 child: _buildWelcomeCard()),
             if (_isGuest)
@@ -124,8 +85,7 @@ class _HomeScreenState
               child: _buildSectionHeader(
                 AppStrings.todayMatches,
                 '💑',
-                onViewAll: () =>
-                    context.go('/search'),
+                onViewAll: () => context.go('/search'),
               ),
             ),
             SliverToBoxAdapter(
@@ -134,8 +94,7 @@ class _HomeScreenState
               child: _buildSectionHeader(
                 AppStrings.newMembers,
                 '✨',
-                onViewAll: () =>
-                    context.go('/search'),
+                onViewAll: () => context.go('/search'),
               ),
             ),
             SliverToBoxAdapter(
@@ -151,17 +110,14 @@ class _HomeScreenState
   }
 
   // ── TOP BAR ───────────────────────────────────────────
-  // Sirf Logo + App name + Notification bell
 
-  Widget _buildTopBar(int unreadCount) {
-    final topPad =
-        MediaQuery.of(context).padding.top;
+  Widget _buildTopBar(int unreadCount, bool isPremium) {
+    final topPad = MediaQuery.of(context).padding.top;
     return Container(
       decoration: const BoxDecoration(
         gradient: AppColors.crimsonGradient,
       ),
-      padding: EdgeInsets.fromLTRB(
-          20, topPad + 12, 16, 16),
+      padding: EdgeInsets.fromLTRB(20, topPad + 12, 16, 16),
       child: Row(
         children: [
           // Logo
@@ -169,22 +125,18 @@ class _HomeScreenState
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color:
-              Colors.white.withOpacity(0.2),
-              borderRadius:
-              BorderRadius.circular(12),
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: const Center(
-              child: Text('💍',
-                  style: TextStyle(fontSize: 20)),
+              child: Text('💍', style: TextStyle(fontSize: 20)),
             ),
           ),
           const SizedBox(width: 12),
           // App name + tagline
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   AppStrings.appName,
@@ -199,18 +151,25 @@ class _HomeScreenState
                   AppStrings.appTagline,
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.white
-                        .withOpacity(0.75),
+                    color: Colors.white.withOpacity(0.75),
                   ),
                 ),
               ],
             ),
           ),
-          // Only notification bell
+
+          // ✅ PREMIUM ICON — Non-premium users ko dikhega
+          if (!isPremium) ...[
+            _PremiumButton(
+              onTap: () => context.push('/premium'),
+            ),
+            const SizedBox(width: 8),
+          ],
+
+          // Notification bell
           _NotificationBell(
             badgeCount: unreadCount,
-            onTap: () =>
-                context.push('/notifications'),
+            onTap: () => context.push('/notifications'),
           ),
         ],
       ),
@@ -220,8 +179,7 @@ class _HomeScreenState
   // ── WELCOME CARD ──────────────────────────────────────
 
   Widget _buildWelcomeCard() {
-    final profile =
-    ref.watch(currentProfileProvider);
+    final profile = ref.watch(currentProfileProvider);
     final score = ref.watch(profileScoreProvider);
     final name = profile?.firstName ?? 'There';
     final greeting = _getGreeting();
@@ -229,22 +187,19 @@ class _HomeScreenState
     return Container(
       decoration: const BoxDecoration(
           gradient: AppColors.crimsonGradient),
-      padding: const EdgeInsets.fromLTRB(
-          20, 0, 20, 20),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.13),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-              color:
-              Colors.white.withOpacity(0.2)),
+              color: Colors.white.withOpacity(0.2)),
         ),
         child: Row(children: [
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '$greeting, $name! 👋',
@@ -266,40 +221,29 @@ class _HomeScreenState
                     '12 ${AppStrings.newMatchesCount}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white
-                          .withOpacity(0.85),
+                      color: Colors.white.withOpacity(0.85),
                     ),
                   ),
                 ]),
                 const SizedBox(height: 12),
-                // Complete profile CTA if score low
                 if (score < 80)
                   GestureDetector(
-                    onTap: () =>
-                        context.go('/edit-profile'),
+                    onTap: () => context.go('/edit-profile'),
                     child: Container(
-                      padding:
-                      const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.white
-                            .withOpacity(0.18),
-                        borderRadius:
-                        BorderRadius.circular(
-                            100),
+                        color: Colors.white.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(100),
                         border: Border.all(
-                          color: Colors.white
-                              .withOpacity(0.35),
+                          color: Colors.white.withOpacity(0.35),
                         ),
                       ),
                       child: Row(
-                        mainAxisSize:
-                        MainAxisSize.min,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(
-                            Icons
-                                .edit_note_rounded,
+                            Icons.edit_note_rounded,
                             size: 14,
                             color: Colors.white,
                           ),
@@ -308,10 +252,8 @@ class _HomeScreenState
                             'Complete profile →',
                             style: TextStyle(
                               fontSize: 11,
-                              fontWeight:
-                              FontWeight.w600,
-                              color: Colors.white
-                                  .withOpacity(0.9),
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.9),
                             ),
                           ),
                         ],
@@ -324,52 +266,41 @@ class _HomeScreenState
           const SizedBox(width: 16),
           // Profile score ring
           GestureDetector(
-            onTap: () =>
-                context.go('/my-profile'),
-            child: Column(
+            onTap: () => context.go('/my-profile'),
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                Stack(
-                  alignment: Alignment.center,
+                SizedBox(
+                  width: 62,
+                  height: 62,
+                  child: CircularProgressIndicator(
+                    value: score / 100,
+                    strokeWidth: 5,
+                    backgroundColor:
+                    Colors.white.withOpacity(0.2),
+                    valueColor: AlwaysStoppedAnimation(
+                      score >= 80
+                          ? AppColors.goldLight
+                          : Colors.white.withOpacity(0.7),
+                    ),
+                  ),
+                ),
+                Column(
                   children: [
-                    SizedBox(
-                      width: 62,
-                      height: 62,
-                      child:
-                      CircularProgressIndicator(
-                        value: score / 100,
-                        strokeWidth: 5,
-                        backgroundColor:
-                        Colors.white
-                            .withOpacity(0.2),
-                        valueColor:
-                        AlwaysStoppedAnimation(
-                          score >= 80
-                              ? AppColors.goldLight
-                              : Colors.white
-                              .withOpacity(0.7),
-                        ),
+                    Text(
+                      '$score%',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
                       ),
                     ),
-                    Column(
-                      children: [
-                        Text(
-                          '$score%',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight:
-                            FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          'Profile',
-                          style: TextStyle(
-                            fontSize: 8,
-                            color: Colors.white
-                                .withOpacity(0.7),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Profile',
+                      style: TextStyle(
+                        fontSize: 8,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
                     ),
                   ],
                 ),
@@ -389,16 +320,12 @@ class _HomeScreenState
         required VoidCallback onViewAll,
       }) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          16, 20, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
       child: Row(
-        mainAxisAlignment:
-        MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(children: [
-            Text(emoji,
-                style: const TextStyle(
-                    fontSize: 20)),
+            Text(emoji, style: const TextStyle(fontSize: 20)),
             const SizedBox(width: 8),
             Text(title, style: AppTextStyles.h4),
           ]),
@@ -409,14 +336,12 @@ class _HomeScreenState
                   horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
                 color: AppColors.crimsonSurface,
-                borderRadius:
-                BorderRadius.circular(100),
+                borderRadius: BorderRadius.circular(100),
               ),
               child: Text(
                 AppStrings.viewAll,
                 style: AppTextStyles.labelSmall
-                    .copyWith(
-                    color: AppColors.crimson),
+                    .copyWith(color: AppColors.crimson),
               ),
             ),
           ),
@@ -425,7 +350,7 @@ class _HomeScreenState
     );
   }
 
-  // ── TODAY'S MATCHES — Horizontal scroll ───────────────
+  // ── TODAY'S MATCHES ───────────────────────────────────
 
   Widget _buildTodayMatches() {
     return SizedBox(
@@ -433,8 +358,7 @@ class _HomeScreenState
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-            16, 0, 16, 8),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         itemCount: mockProfiles.length,
         itemBuilder: (_, i) =>
             _buildHorizontalCard(mockProfiles[i]),
@@ -443,45 +367,37 @@ class _HomeScreenState
   }
 
   Widget _buildHorizontalCard(MockProfile p) {
-    final sentIds =
-    ref.watch(sentInterestIdsProvider);
+    final sentIds = ref.watch(sentInterestIdsProvider);
     final isSent = sentIds.contains(p.id);
 
     return GestureDetector(
-      onTap: () => context.push(
-          '/profile/${p.id}',
-          extra: p),
+      onTap: () => context.push('/profile/${p.id}', extra: p),
       child: Container(
         width: 155,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(16),
-          border:
-          Border.all(color: AppColors.border),
+          border: Border.all(color: AppColors.border),
           boxShadow: AppColors.softShadow,
         ),
         child: Column(
           children: [
-            // Photo
             Expanded(
               child: ClipRRect(
-                borderRadius:
-                const BorderRadius.vertical(
+                borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(15)),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     Container(
-                      color:
-                      AppColors.crimsonSurface,
+                      color: AppColors.crimsonSurface,
                       child: Center(
                         child: Text(p.emoji,
-                            style: const TextStyle(
-                                fontSize: 54)),
+                            style:
+                            const TextStyle(fontSize: 54)),
                       ),
                     ),
-                    // Premium badge
                     if (p.isPremium)
                       Positioned(
                         top: 8,
@@ -489,63 +405,47 @@ class _HomeScreenState
                         child: Container(
                           width: 24,
                           height: 24,
-                          decoration:
-                          BoxDecoration(
+                          decoration: BoxDecoration(
                             color: AppColors.gold,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors
-                                    .gold
-                                    .withOpacity(
-                                    0.4),
+                                color: AppColors.gold
+                                    .withOpacity(0.4),
                                 blurRadius: 6,
                               ),
                             ],
                           ),
                           child: const Center(
                             child: Text('👑',
-                                style: TextStyle(
-                                    fontSize: 12)),
+                                style: TextStyle(fontSize: 12)),
                           ),
                         ),
                       ),
-                    // Verified bar
                     if (p.isVerified)
                       Positioned(
                         bottom: 0,
                         left: 0,
                         right: 0,
                         child: Container(
-                          padding:
-                          const EdgeInsets
-                              .symmetric(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 8,
                             vertical: 5,
                           ),
-                          color: AppColors.success
-                              .withOpacity(0.9),
+                          color: AppColors.success.withOpacity(0.9),
                           child: const Row(
                             mainAxisAlignment:
-                            MainAxisAlignment
-                                .center,
+                            MainAxisAlignment.center,
                             children: [
-                              Icon(
-                                  Icons
-                                      .verified_rounded,
-                                  size: 11,
-                                  color:
-                                  Colors.white),
+                              Icon(Icons.verified_rounded,
+                                  size: 11, color: Colors.white),
                               SizedBox(width: 4),
                               Text(
                                 'Verified',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color:
-                                  Colors.white,
-                                  fontWeight:
-                                  FontWeight
-                                      .w600,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
@@ -556,36 +456,28 @@ class _HomeScreenState
                 ),
               ),
             ),
-            // Info
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  10, 8, 10, 10),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
-                crossAxisAlignment:
-                CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '${p.name.split(' ').first}, ${p.age}',
-                    style:
-                    AppTextStyles.profileNameSmall,
+                    style: AppTextStyles.profileNameSmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Row(children: [
-                    const Icon(
-                        Icons.location_on_outlined,
-                        size: 10,
-                        color: AppColors.muted),
+                    const Icon(Icons.location_on_outlined,
+                        size: 10, color: AppColors.muted),
                     const SizedBox(width: 2),
                     Expanded(
                       child: Text(
                         '${p.city} • ${p.caste}',
-                        style:
-                        AppTextStyles.bodySmall,
+                        style: AppTextStyles.bodySmall,
                         maxLines: 1,
-                        overflow:
-                        TextOverflow.ellipsis,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ]),
@@ -600,12 +492,10 @@ class _HomeScreenState
                       HapticFeedback.lightImpact();
                       if (!isSent) {
                         ref
-                            .read(interestsProvider
-                            .notifier)
+                            .read(interestsProvider.notifier)
                             .sendInterest(
                           receiverId: p.id,
-                          receiverProfileId:
-                          p.id,
+                          receiverProfileId: p.id,
                         );
                       }
                     },
@@ -619,18 +509,15 @@ class _HomeScreenState
     );
   }
 
-  // ── NEW MEMBERS — Grid ────────────────────────────────
+  // ── NEW MEMBERS ───────────────────────────────────────
 
   Widget _buildNewMembers() {
-    final newOnes =
-    mockProfiles.reversed.take(4).toList();
+    final newOnes = mockProfiles.reversed.take(4).toList();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          16, 0, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: GridView.builder(
         shrinkWrap: true,
-        physics:
-        const NeverScrollableScrollPhysics(),
+        physics: const NeverScrollableScrollPhysics(),
         gridDelegate:
         const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
@@ -639,48 +526,40 @@ class _HomeScreenState
           childAspectRatio: 0.75,
         ),
         itemCount: newOnes.length,
-        itemBuilder: (_, i) =>
-            _buildGridCard(newOnes[i]),
+        itemBuilder: (_, i) => _buildGridCard(newOnes[i]),
       ),
     );
   }
 
   Widget _buildGridCard(MockProfile p) {
-    final sentIds =
-    ref.watch(sentInterestIdsProvider);
+    final sentIds = ref.watch(sentInterestIdsProvider);
     final isSent = sentIds.contains(p.id);
 
     return GestureDetector(
-      onTap: () => context.push(
-          '/profile/${p.id}',
-          extra: p),
+      onTap: () => context.push('/profile/${p.id}', extra: p),
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(14),
-          border:
-          Border.all(color: AppColors.border),
+          border: Border.all(color: AppColors.border),
           boxShadow: AppColors.softShadow,
         ),
         child: Column(
-          crossAxisAlignment:
-          CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: ClipRRect(
-                borderRadius:
-                const BorderRadius.vertical(
+                borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(13)),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     Container(
-                      color:
-                      AppColors.crimsonSurface,
+                      color: AppColors.crimsonSurface,
                       child: Center(
                         child: Text(p.emoji,
-                            style: const TextStyle(
-                                fontSize: 48)),
+                            style:
+                            const TextStyle(fontSize: 48)),
                       ),
                     ),
                     if (p.isVerified)
@@ -688,35 +567,26 @@ class _HomeScreenState
                         top: 8,
                         left: 8,
                         child: Container(
-                          padding:
-                          const EdgeInsets
-                              .symmetric(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 7,
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
                             color: AppColors.success,
                             borderRadius:
-                            BorderRadius
-                                .circular(100),
+                            BorderRadius.circular(100),
                           ),
                           child: const Row(
-                            mainAxisSize:
-                            MainAxisSize.min,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                  Icons
-                                      .verified_rounded,
-                                  size: 9,
-                                  color:
-                                  Colors.white),
+                              Icon(Icons.verified_rounded,
+                                  size: 9, color: Colors.white),
                               SizedBox(width: 3),
                               Text(
                                 'Verified',
                                 style: TextStyle(
                                   fontSize: 9,
-                                  fontWeight:
-                                  FontWeight.w700,
+                                  fontWeight: FontWeight.w700,
                                   color: Colors.white,
                                 ),
                               ),
@@ -728,24 +598,20 @@ class _HomeScreenState
                       top: 8,
                       right: 8,
                       child: Container(
-                        padding:
-                        const EdgeInsets
-                            .symmetric(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: 6,
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.gold,
                           borderRadius:
-                          BorderRadius.circular(
-                              100),
+                          BorderRadius.circular(100),
                         ),
                         child: const Text(
                           'NEW',
                           style: TextStyle(
                             fontSize: 8,
-                            fontWeight:
-                            FontWeight.w800,
+                            fontWeight: FontWeight.w800,
                             color: Colors.white,
                             letterSpacing: 0.5,
                           ),
@@ -757,16 +623,13 @@ class _HomeScreenState
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  10, 8, 10, 10),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
-                crossAxisAlignment:
-                CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '${p.name.split(' ').first}, ${p.age}',
-                    style:
-                    AppTextStyles.profileNameSmall,
+                    style: AppTextStyles.profileNameSmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -774,26 +637,21 @@ class _HomeScreenState
                   Text(
                     p.profession,
                     style: AppTextStyles.bodySmall
-                        .copyWith(
-                        color: AppColors.inkSoft),
+                        .copyWith(color: AppColors.inkSoft),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Row(children: [
-                    const Icon(
-                        Icons.location_on_outlined,
-                        size: 10,
-                        color: AppColors.muted),
+                    const Icon(Icons.location_on_outlined,
+                        size: 10, color: AppColors.muted),
                     const SizedBox(width: 2),
                     Expanded(
                       child: Text(
                         p.city,
-                        style:
-                        AppTextStyles.bodySmall,
+                        style: AppTextStyles.bodySmall,
                         maxLines: 1,
-                        overflow:
-                        TextOverflow.ellipsis,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ]),
@@ -808,12 +666,10 @@ class _HomeScreenState
                       HapticFeedback.lightImpact();
                       if (!isSent) {
                         ref
-                            .read(interestsProvider
-                            .notifier)
+                            .read(interestsProvider.notifier)
                             .sendInterest(
                           receiverId: p.id,
-                          receiverProfileId:
-                          p.id,
+                          receiverProfileId: p.id,
                         );
                       }
                     },
@@ -831,8 +687,7 @@ class _HomeScreenState
 
   Widget _buildFeaturedBanner() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(
-          16, 20, 16, 0),
+      margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -849,17 +704,14 @@ class _HomeScreenState
       child: Row(children: [
         Expanded(
           child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color:
-                  Colors.white.withOpacity(0.2),
-                  borderRadius:
-                  BorderRadius.circular(100),
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(100),
                 ),
                 child: const Text(
                   '⭐ PREMIUM',
@@ -885,22 +737,19 @@ class _HomeScreenState
                 AppStrings.premiumSubtext,
                 style: TextStyle(
                   fontSize: 12,
-                  color:
-                  Colors.white.withOpacity(0.85),
+                  color: Colors.white.withOpacity(0.85),
                   height: 1.4,
                 ),
               ),
               const SizedBox(height: 14),
               GestureDetector(
-                onTap: () =>
-                    context.push('/premium'),
+                onTap: () => context.push('/premium'),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius:
-                    BorderRadius.circular(100),
+                    borderRadius: BorderRadius.circular(100),
                   ),
                   child: Text(
                     AppStrings.viewNow,
@@ -916,8 +765,7 @@ class _HomeScreenState
           ),
         ),
         const SizedBox(width: 16),
-        const Text('👑',
-            style: TextStyle(fontSize: 56)),
+        const Text('👑', style: TextStyle(fontSize: 56)),
       ]),
     );
   }
@@ -926,30 +774,25 @@ class _HomeScreenState
 
   Widget _buildGuestBanner() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(
-          16, 16, 16, 0),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.crimsonSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-            color:
-            AppColors.crimson.withOpacity(0.25)),
+            color: AppColors.crimson.withOpacity(0.25)),
       ),
       child: Row(children: [
-        const Text('🔒',
-            style: TextStyle(fontSize: 24)),
+        const Text('🔒', style: TextStyle(fontSize: 24)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 AppStrings.limitedAccess,
                 style: AppTextStyles.labelLarge
-                    .copyWith(
-                    color: AppColors.crimson),
+                    .copyWith(color: AppColors.crimson),
               ),
               const SizedBox(height: 3),
               Text(
@@ -966,8 +809,7 @@ class _HomeScreenState
                 horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: AppColors.crimson,
-              borderRadius:
-              BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: const Text(
               'Join Free',
@@ -983,8 +825,6 @@ class _HomeScreenState
     );
   }
 
-  // ── HELPERS ───────────────────────────────────────────
-
   String _getGreeting() {
     final h = DateTime.now().hour;
     if (h < 12) return 'Good Morning';
@@ -994,7 +834,59 @@ class _HomeScreenState
 }
 
 // ─────────────────────────────────────────────────────────
-// INTEREST BUTTON — Reusable widget
+// ✅ PREMIUM BUTTON — Top bar mein crown icon
+// ─────────────────────────────────────────────────────────
+
+class _PremiumButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _PremiumButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFD700), Color(0xFFC9962A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.gold.withOpacity(0.45),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('👑', style: TextStyle(fontSize: 14)),
+            SizedBox(width: 5),
+            Text(
+              'Premium',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// INTEREST BUTTON
 // ─────────────────────────────────────────────────────────
 
 class _InterestButton extends StatelessWidget {
@@ -1011,11 +903,9 @@ class _InterestButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration:
-        const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 200),
         width: double.infinity,
-        padding:
-        const EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.symmetric(vertical: 7),
         decoration: BoxDecoration(
           color: isSent
               ? AppColors.crimson
@@ -1024,21 +914,17 @@ class _InterestButton extends StatelessWidget {
           border: isSent
               ? null
               : Border.all(
-              color: AppColors.crimson
-                  .withOpacity(0.3)),
+              color: AppColors.crimson.withOpacity(0.3)),
         ),
         child: Row(
-          mainAxisAlignment:
-          MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               isSent
                   ? Icons.favorite_rounded
                   : Icons.favorite_border_rounded,
               size: 12,
-              color: isSent
-                  ? Colors.white
-                  : AppColors.crimson,
+              color: isSent ? Colors.white : AppColors.crimson,
             ),
             const SizedBox(width: 4),
             Text(
@@ -1048,9 +934,8 @@ class _InterestButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: isSent
-                    ? Colors.white
-                    : AppColors.crimson,
+                color:
+                isSent ? Colors.white : AppColors.crimson,
               ),
             ),
           ],
@@ -1105,14 +990,11 @@ class _NotificationBell extends StatelessWidget {
                     color: AppColors.error,
                     shape: BoxShape.circle,
                     border: Border.all(
-                        color: Colors.white,
-                        width: 1.5),
+                        color: Colors.white, width: 1.5),
                   ),
                   child: Center(
                     child: Text(
-                      badgeCount > 9
-                          ? '9+'
-                          : '$badgeCount',
+                      badgeCount > 9 ? '9+' : '$badgeCount',
                       style: const TextStyle(
                         fontSize: 8,
                         fontWeight: FontWeight.w800,
@@ -1138,15 +1020,14 @@ class _GuestModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomPad =
-        MediaQuery.of(context).padding.bottom;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
     return Container(
-      padding: EdgeInsets.fromLTRB(
-          24, 8, 24, bottomPad + 24),
+      padding:
+      EdgeInsets.fromLTRB(24, 8, 24, bottomPad + 24),
       decoration: const BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.vertical(
-            top: Radius.circular(24)),
+        borderRadius:
+        BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1155,12 +1036,10 @@ class _GuestModal extends StatelessWidget {
             child: Container(
               width: 40,
               height: 4,
-              margin:
-              const EdgeInsets.only(bottom: 20),
+              margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
                 color: AppColors.ivoryDark,
-                borderRadius:
-                BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
@@ -1191,15 +1070,12 @@ class _GuestModal extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           ...[
-            (Icons.photo_library_outlined,
-            AppStrings.viewUnlimited),
-            (Icons.favorite_outline_rounded,
-            AppStrings.sendReceive),
+            (Icons.photo_library_outlined, AppStrings.viewUnlimited),
+            (Icons.favorite_outline_rounded, AppStrings.sendReceive),
             (Icons.chat_bubble_outline_rounded,
             AppStrings.chatDirectlyFull),
           ].map((item) => Padding(
-            padding:
-            const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.only(bottom: 10),
             child: Row(children: [
               Container(
                 width: 32,
@@ -1210,14 +1086,12 @@ class _GuestModal extends StatelessWidget {
                 ),
                 child: Center(
                   child: Icon(item.$1,
-                      size: 16,
-                      color: AppColors.crimson),
+                      size: 16, color: AppColors.crimson),
                 ),
               ),
               const SizedBox(width: 12),
               Text(item.$2,
-                  style:
-                  AppTextStyles.labelMedium),
+                  style: AppTextStyles.labelMedium),
             ]),
           )),
           const SizedBox(height: 20),
@@ -1232,8 +1106,7 @@ class _GuestModal extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.crimson,
                 shape: RoundedRectangleBorder(
-                    borderRadius:
-                    BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(14)),
                 elevation: 0,
               ),
               child: Text(
@@ -1248,8 +1121,7 @@ class _GuestModal extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           TextButton(
-            onPressed: () =>
-                Navigator.pop(context),
+            onPressed: () => Navigator.pop(context),
             child: Text(
               AppStrings.maybeLater,
               style: AppTextStyles.bodyMedium

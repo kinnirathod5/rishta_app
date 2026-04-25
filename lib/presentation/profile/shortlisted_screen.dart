@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_colors.dart';
-import '../home/home_screen.dart' show MockProfile, mockProfiles;
+import 'package:rishta_app/data/mock/mock_profiles.dart';
 
 // ── SCREEN ────────────────────────────────────────────────
 

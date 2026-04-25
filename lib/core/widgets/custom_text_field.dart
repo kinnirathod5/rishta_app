@@ -99,8 +99,7 @@ class AppTextField extends StatefulWidget {
     this.onSuffixTap,
     this.fillColor,
     this.initialValue,
-    this.textCapitalization =
-        TextCapitalization.none,
+    this.textCapitalization = TextCapitalization.none,
   });
 
   // ── CONVENIENCE CONSTRUCTORS ──────────────────────
@@ -143,8 +142,7 @@ class AppTextField extends StatefulWidget {
     FocusNode? focusNode,
     String? Function(String?)? validator,
     ValueChanged<String>? onChanged,
-    TextInputAction textInputAction =
-        TextInputAction.done,
+    TextInputAction textInputAction = TextInputAction.done,
   }) =>
       _PasswordTextField(
         key: key,
@@ -207,8 +205,7 @@ class AppTextField extends StatefulWidget {
         showCounter: showCounter,
         validator: validator,
         onChanged: onChanged,
-        textCapitalization:
-        TextCapitalization.sentences,
+        textCapitalization: TextCapitalization.sentences,
       );
 
   /// City / Location field
@@ -229,8 +226,7 @@ class AppTextField extends StatefulWidget {
         prefixIcon: Icons.location_on_outlined,
         validator: validator,
         onChanged: onChanged,
-        textCapitalization:
-        TextCapitalization.words,
+        textCapitalization: TextCapitalization.words,
         required: true,
       );
 
@@ -252,11 +248,9 @@ class AppTextField extends StatefulWidget {
         prefixIcon: Icons.person_outline_rounded,
         validator: validator,
         onChanged: onChanged,
-        textCapitalization:
-        TextCapitalization.words,
+        textCapitalization: TextCapitalization.words,
         inputFormatters: [
-          FilteringTextInputFormatter.allow(
-              RegExp(r"[a-zA-Z\s']")),
+          FilteringTextInputFormatter.allow(RegExp(r"[a-zA-Z\s']")),
           LengthLimitingTextInputFormatter(60),
         ],
         required: true,
@@ -273,8 +267,7 @@ class AppTextField extends StatefulWidget {
       AppTextField(
         key: key,
         label: label,
-        controller:
-        TextEditingController(text: value),
+        controller: TextEditingController(text: value),
         prefixIcon: prefixIcon,
         readOnly: true,
         onTap: onTap,
@@ -285,12 +278,10 @@ class AppTextField extends StatefulWidget {
       );
 
   @override
-  State<AppTextField> createState() =>
-      _AppTextFieldState();
+  State<AppTextField> createState() => _AppTextFieldState();
 }
 
-class _AppTextFieldState
-    extends State<AppTextField> {
+class _AppTextFieldState extends State<AppTextField> {
   late FocusNode _focusNode;
   bool _isFocused = false;
   String? _errorText;
@@ -342,8 +333,7 @@ class _AppTextFieldState
             if (widget.required)
               Text(
                 ' *',
-                style: AppTextStyles.inputLabel
-                    .copyWith(
+                style: AppTextStyles.inputLabel.copyWith(
                     color: AppColors.crimson),
               ),
           ]),
@@ -352,67 +342,64 @@ class _AppTextFieldState
 
         // ── INPUT ───────────────────────────────
         AnimatedContainer(
-          duration:
-          const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            color: widget.enabled
-                ? (widget.fillColor ??
-                AppColors.white)
-                : AppColors.ivoryDark,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: _borderColor,
               width: _borderWidth,
             ),
           ),
-          child: TextFormField(
-            controller: widget.controller,
-            focusNode: _focusNode,
-            initialValue: widget.initialValue,
-            keyboardType: widget.keyboardType,
-            textInputAction: widget.textInputAction,
-            inputFormatters: widget.inputFormatters,
-            maxLength: widget.maxLength,
-            maxLines: widget.obscureText
-                ? 1
-                : widget.maxLines,
-            minLines: widget.minLines,
-            obscureText: widget.obscureText,
-            readOnly: widget.readOnly,
-            autofocus: widget.autofocus,
-            enabled: widget.enabled,
-            textCapitalization:
-            widget.textCapitalization,
-            style: AppTextStyles.inputText,
-            cursorColor: AppColors.crimson,
-            onChanged: widget.onChanged,
-            onFieldSubmitted: widget.onSubmitted,
-            onTap: widget.onTap,
-            validator: (v) {
-              final err =
-              widget.validator?.call(v);
-              WidgetsBinding.instance
-                  .addPostFrameCallback((_) {
-                if (mounted) {
-                  setState(() => _errorText = err);
-                }
-              });
-              return null; // We handle error display
-            },
-            decoration: InputDecoration(
-              hintText: widget.hint,
-              hintStyle: AppTextStyles.inputHint,
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              errorBorder: InputBorder.none,
-              disabledBorder: InputBorder.none,
-              focusedErrorBorder: InputBorder.none,
-              counterText: '',
-              contentPadding:
-              _contentPadding(),
-              prefixIcon: _buildPrefixIcon(),
-              suffixIcon: _buildSuffixIcon(),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(9),
+            child: ColoredBox(
+              color: widget.enabled
+                  ? (widget.fillColor ?? AppColors.white)
+                  : AppColors.ivoryDark,
+              child: TextFormField(
+                controller: widget.controller,
+                focusNode: _focusNode,
+                initialValue: widget.initialValue,
+                keyboardType: widget.keyboardType,
+                textInputAction: widget.textInputAction,
+                inputFormatters: widget.inputFormatters,
+                maxLength: widget.maxLength,
+                maxLines: widget.obscureText ? 1 : widget.maxLines,
+                minLines: widget.minLines,
+                obscureText: widget.obscureText,
+                readOnly: widget.readOnly,
+                autofocus: widget.autofocus,
+                enabled: widget.enabled,
+                textCapitalization: widget.textCapitalization,
+                style: AppTextStyles.inputText,
+                cursorColor: AppColors.crimson,
+                onChanged: widget.onChanged,
+                onFieldSubmitted: widget.onSubmitted,
+                onTap: widget.onTap,
+                validator: (v) {
+                  final err = widget.validator?.call(v);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      setState(() => _errorText = err);
+                    }
+                  });
+                  return null; // We handle error display
+                },
+                decoration: InputDecoration(
+                  hintText: widget.hint,
+                  hintStyle: AppTextStyles.inputHint,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  counterText: '',
+                  contentPadding: _contentPadding(),
+                  prefixIcon: _buildPrefixIcon(),
+                  suffixIcon: _buildSuffixIcon(),
+                ),
+              ),
             ),
           ),
         ),
@@ -431,20 +418,17 @@ class _AppTextFieldState
           _ErrorText(message: _errorText!),
 
         // ── HELPER ──────────────────────────────
-        if (widget.helperText != null &&
-            _errorText == null)
+        if (widget.helperText != null && _errorText == null)
           _HelperText(message: widget.helperText!),
       ],
     );
   }
 
   EdgeInsetsGeometry _contentPadding() {
-    final hasPrefixIcon = widget.prefixIcon !=
-        null ||
-        widget.prefixWidget != null;
-    final hasSuffixIcon = widget.suffixIcon !=
-        null ||
-        widget.suffixWidget != null;
+    final hasPrefixIcon =
+        widget.prefixIcon != null || widget.prefixWidget != null;
+    final hasSuffixIcon =
+        widget.suffixIcon != null || widget.suffixWidget != null;
 
     return EdgeInsets.only(
       left: hasPrefixIcon ? 4 : 16,
@@ -462,9 +446,7 @@ class _AppTextFieldState
       return Icon(
         widget.prefixIcon,
         size: 18,
-        color: _isFocused
-            ? AppColors.crimson
-            : AppColors.muted,
+        color: _isFocused ? AppColors.crimson : AppColors.muted,
       );
     }
     return null;
@@ -504,8 +486,7 @@ class _PasswordTextField extends AppTextField {
   }) : super(
     label: label,
     hint: '••••••••',
-    keyboardType:
-    TextInputType.visiblePassword,
+    keyboardType: TextInputType.visiblePassword,
     obscureText: true,
     prefixIcon: Icons.lock_outline_rounded,
     required: true,
@@ -586,98 +567,91 @@ class _AppDropdownFieldState<T>
             if (widget.required)
               Text(' *',
                   style: AppTextStyles.inputLabel
-                      .copyWith(
-                      color: AppColors.crimson)),
+                      .copyWith(color: AppColors.crimson)),
           ]),
           const SizedBox(height: 7),
         ],
 
         // Dropdown
         AnimatedContainer(
-          duration:
-          const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            color: widget.enabled
-                ? AppColors.white
-                : AppColors.ivoryDark,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: _borderColor,
               width: _isFocused ? 2 : 1.5,
             ),
           ),
-          child: DropdownButtonFormField<T>(
-            value: widget.value,
-            isExpanded: true,
-            dropdownColor: AppColors.white,
-            icon: const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 20,
-                color: AppColors.muted),
-            style: AppTextStyles.inputText,
-            decoration: InputDecoration(
-              hintText: widget.hint,
-              hintStyle: AppTextStyles.inputHint,
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              errorBorder: InputBorder.none,
-              focusedErrorBorder: InputBorder.none,
-              contentPadding:
-              const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 14),
-              prefixIcon: widget.prefixIcon != null
-                  ? Icon(
-                widget.prefixIcon,
-                size: 18,
-                color: AppColors.muted,
-              )
-                  : null,
-              counterText: '',
-            ),
-            onTap: () =>
-                setState(() => _isFocused = true),
-            onChanged: widget.enabled
-                ? (v) {
-              setState(
-                      () => _isFocused = false);
-              widget.onChanged?.call(v);
-            }
-                : null,
-            validator: (v) {
-              final err =
-              widget.validator?.call(v);
-              WidgetsBinding.instance
-                  .addPostFrameCallback((_) {
-                if (mounted) {
-                  setState(() => _errorText = err);
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(9),
+            child: ColoredBox(
+              color: widget.enabled
+                  ? AppColors.white
+                  : AppColors.ivoryDark,
+              child: DropdownButtonFormField<T>(
+                value: widget.value,
+                isExpanded: true,
+                dropdownColor: AppColors.white,
+                icon: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 20,
+                    color: AppColors.muted),
+                style: AppTextStyles.inputText,
+                decoration: InputDecoration(
+                  hintText: widget.hint,
+                  hintStyle: AppTextStyles.inputHint,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  prefixIcon: widget.prefixIcon != null
+                      ? Icon(
+                    widget.prefixIcon,
+                    size: 18,
+                    color: AppColors.muted,
+                  )
+                      : null,
+                  counterText: '',
+                ),
+                onTap: () => setState(() => _isFocused = true),
+                onChanged: widget.enabled
+                    ? (v) {
+                  setState(() => _isFocused = false);
+                  widget.onChanged?.call(v);
                 }
-              });
-              return null;
-            },
-            items: widget.items
-                .map((item) =>
-                DropdownMenuItem<T>(
+                    : null,
+                validator: (v) {
+                  final err = widget.validator?.call(v);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      setState(() => _errorText = err);
+                    }
+                  });
+                  return null;
+                },
+                items: widget.items
+                    .map((item) => DropdownMenuItem<T>(
                   value: item,
                   child: Text(
-                    widget.itemLabel
-                        ?.call(item) ??
+                    widget.itemLabel?.call(item) ??
                         item.toString(),
-                    style:
-                    AppTextStyles.inputText,
+                    style: AppTextStyles.inputText,
                   ),
                 ))
-                .toList(),
+                    .toList(),
+              ),
+            ),
           ),
         ),
 
         if (_errorText != null)
           _ErrorText(message: _errorText!),
 
-        if (widget.helperText != null &&
-            _errorText == null)
-          _HelperText(
-              message: widget.helperText!),
+        if (widget.helperText != null && _errorText == null)
+          _HelperText(message: widget.helperText!),
       ],
     );
   }
@@ -725,8 +699,7 @@ class OtpInputField extends StatelessWidget {
           counterText: '',
           contentPadding: EdgeInsets.zero,
           enabledBorder: OutlineInputBorder(
-            borderRadius:
-            BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(
               color: hasError
                   ? AppColors.error
@@ -735,8 +708,7 @@ class OtpInputField extends StatelessWidget {
             ),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius:
-            BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide(
               color: hasError
                   ? AppColors.error
@@ -744,91 +716,25 @@ class OtpInputField extends StatelessWidget {
               width: 2,
             ),
           ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(
+              color: AppColors.error,
+              width: 2,
+            ),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(
+              color: AppColors.error,
+              width: 2,
+            ),
+          ),
+          fillColor: hasError
+              ? AppColors.errorSurface
+              : AppColors.white,
           filled: true,
-          fillColor: AppColors.white,
         ),
-        onChanged: (v) {
-          if (v.length == 1 &&
-              nextFocusNode != null) {
-            nextFocusNode!.requestFocus();
-          }
-        },
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// SEARCH INPUT BAR
-// (Styled for header use with crimson background)
-// ─────────────────────────────────────────────────────────
-
-class HeaderSearchBar extends StatelessWidget {
-  final TextEditingController? controller;
-  final FocusNode? focusNode;
-  final String hint;
-  final ValueChanged<String>? onChanged;
-  final VoidCallback? onClear;
-  final bool autofocus;
-
-  const HeaderSearchBar({
-    super.key,
-    this.controller,
-    this.focusNode,
-    this.hint = 'Search...',
-    this.onChanged,
-    this.onClear,
-    this.autofocus = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 44,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: Colors.white.withOpacity(0.3)),
-      ),
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        autofocus: autofocus,
-        style: const TextStyle(
-            color: Colors.white, fontSize: 14),
-        cursorColor: Colors.white,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(
-              color: Colors.white.withOpacity(0.6),
-              fontSize: 14),
-          prefixIcon: Icon(Icons.search_rounded,
-              size: 18,
-              color:
-              Colors.white.withOpacity(0.7)),
-          suffixIcon: (controller?.text.isNotEmpty ??
-              false)
-              ? GestureDetector(
-            onTap: () {
-              controller?.clear();
-              onClear?.call();
-            },
-            child: Icon(
-                Icons.close_rounded,
-                size: 18,
-                color: Colors.white
-                    .withOpacity(0.7)),
-          )
-              : null,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          contentPadding:
-          const EdgeInsets.symmetric(
-              vertical: 12),
-        ),
-        onChanged: onChanged,
       ),
     );
   }
@@ -845,18 +751,20 @@ class _ErrorText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Row(children: [
-        const Icon(Icons.error_outline_rounded,
-            size: 13, color: AppColors.error),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            message,
-            style: AppTextStyles.inputError,
+      padding: const EdgeInsets.only(top: 6, left: 4),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline_rounded,
+              size: 13, color: AppColors.error),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              message,
+              style: AppTextStyles.inputError,
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }
@@ -868,10 +776,12 @@ class _HelperText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 5),
+      padding: const EdgeInsets.only(top: 5, left: 4),
       child: Text(
         message,
-        style: AppTextStyles.bodySmall,
+        style: AppTextStyles.inputError.copyWith(
+          color: AppColors.muted,
+        ),
       ),
     );
   }
@@ -880,18 +790,14 @@ class _HelperText extends StatelessWidget {
 class _CounterText extends StatefulWidget {
   final TextEditingController controller;
   final int maxLength;
-  const _CounterText({
-    required this.controller,
-    required this.maxLength,
-  });
+  const _CounterText(
+      {required this.controller, required this.maxLength});
 
   @override
-  State<_CounterText> createState() =>
-      _CounterTextState();
+  State<_CounterText> createState() => _CounterTextState();
 }
 
-class _CounterTextState
-    extends State<_CounterText> {
+class _CounterTextState extends State<_CounterText> {
   @override
   void initState() {
     super.initState();
@@ -908,26 +814,18 @@ class _CounterTextState
 
   @override
   Widget build(BuildContext context) {
-    final count =
-        widget.controller.text.length;
-    final remaining = widget.maxLength - count;
-    final isNearLimit = remaining <= 30;
-
+    final count = widget.controller.text.length;
+    final isNearLimit = count >= widget.maxLength * 0.9;
     return Padding(
-      padding: const EdgeInsets.only(top: 5),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Text(
-            '$count / ${widget.maxLength}',
-            style: AppTextStyles.labelSmall
-                .copyWith(
-              color: isNearLimit
-                  ? AppColors.warning
-                  : AppColors.muted,
-            ),
+      padding: const EdgeInsets.only(top: 4, right: 4),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          '$count / ${widget.maxLength}',
+          style: AppTextStyles.inputError.copyWith(
+            color: isNearLimit ? AppColors.error : AppColors.muted,
           ),
-        ],
+        ),
       ),
     );
   }

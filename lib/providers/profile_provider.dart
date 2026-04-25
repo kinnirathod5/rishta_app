@@ -258,9 +258,10 @@ class MyProfileNotifier
   }
 
   // ── UPDATE PROFILE ────────────────────────────────
+  // ✅ FIX: Agar profile null hai toh pehle CREATE karo
   Future<bool> updateProfile(
       Map<String, dynamic> data) async {
-    if (state.profile == null) return false;
+    if (_userId == null) return false;
 
     state = state.copyWith(
       isSaving: true,
@@ -269,12 +270,31 @@ class MyProfileNotifier
     );
 
     try {
+      // Profile abhi exist nahi karta → create karo
+      if (state.profile == null) {
+        final newProfile =
+        await _profileRepo.createProfile(
+          userId: _userId!,
+          data: data,
+        );
+        state = state.copyWith(
+          profile: newProfile,
+          isSaving: false,
+          successMessage:
+          'Profile created successfully ✓',
+          error: null,
+        );
+        return true;
+      }
+
+      // Profile exist karta hai → update karo
       await _profileRepo.updateProfile(
           state.profile!.id, data);
 
       state = state.copyWith(
         isSaving: false,
-        successMessage: 'Profile updated successfully ✓',
+        successMessage:
+        'Profile updated successfully ✓',
         error: null,
       );
 
@@ -321,7 +341,8 @@ class MyProfileNotifier
 
       state = state.copyWith(
         isSaving: false,
-        successMessage: 'Photo uploaded successfully ✓',
+        successMessage:
+        'Photo uploaded successfully ✓',
         error: null,
       );
 
@@ -374,7 +395,7 @@ class MyProfileNotifier
     }
   }
 
-  // ── SHORTLIST TOGGLE ──────────────────────────────
+  // ── SHORTLIST ─────────────────────────────────────
   Future<void> toggleShortlist(
       String targetProfileId) async {
     final myProfileId = state.profile?.id ?? '';
@@ -415,122 +436,40 @@ class MyProfileNotifier
     }
   }
 
-  // ── BLOCK USER ────────────────────────────────────
-  Future<bool> blockUser(String targetUserId) async {
-    if (_userId == null) return false;
+  // ── BLOCK ─────────────────────────────────────────
+  Future<void> blockUser(String userId) async {
+    if (_userId == null) return;
+    final updated =
+    Set<String>.from(state.blockedUserIds)
+      ..add(userId);
+    state = state.copyWith(blockedUserIds: updated);
 
     try {
       await _profileRepo.blockUser(
-          _userId!, targetUserId);
-      final newSet =
-      Set<String>.from(state.blockedUserIds)
-        ..add(targetUserId);
+          _userId!, userId);
+    } catch (_) {
+      // Revert
       state = state.copyWith(
-        blockedUserIds: newSet,
-        successMessage: 'User blocked',
-        error: null,
-      );
-      return true;
-    } catch (e) {
-      state = state.copyWith(
-        error: _friendlyError(e),
-        successMessage: null,
-      );
-      return false;
-    }
-  }
-
-  // ── UNBLOCK USER ──────────────────────────────────
-  Future<bool> unblockUser(
-      String targetUserId) async {
-    if (_userId == null) return false;
-
-    try {
-      await _profileRepo.unblockUser(
-          _userId!, targetUserId);
-      final newSet =
-      Set<String>.from(state.blockedUserIds)
-        ..remove(targetUserId);
-      state = state.copyWith(
-        blockedUserIds: newSet,
-        successMessage: 'User unblocked ✓',
-        error: null,
-      );
-      return true;
-    } catch (e) {
-      state = state.copyWith(
-        error: _friendlyError(e),
-        successMessage: null,
-      );
-      return false;
-    }
-  }
-
-  // ── REPORT USER ───────────────────────────────────
-  Future<bool> reportUser({
-    required String targetUserId,
-    required String reason,
-  }) async {
-    if (_userId == null) return false;
-
-    try {
-      await _profileRepo.reportUser(
-        reporterUserId: _userId!,
-        targetUserId: targetUserId,
-        reason: reason,
-      );
-      state = state.copyWith(
-        successMessage:
-        'Report submitted successfully ✓',
-        error: null,
-      );
-      return true;
-    } catch (e) {
-      state = state.copyWith(
-        error: _friendlyError(e),
-        successMessage: null,
-      );
-      return false;
-    }
-  }
-
-  // ── SET MAIN PHOTO ────────────────────────────────
-  Future<void> setMainPhoto(String photoUrl) async {
-    if (state.profile == null) return;
-
-    try {
-      await _profileRepo.updateProfile(
-          state.profile!.id,
-          {'mainPhotoUrl': photoUrl});
-      await loadProfile();
-    } catch (e) {
-      state = state.copyWith(
-        error: _friendlyError(e),
-        successMessage: null,
+        blockedUserIds:
+        Set<String>.from(state.blockedUserIds)
+          ..remove(userId),
       );
     }
   }
 
-  // ── CLEAR MESSAGES ────────────────────────────────
-  void clearError() {
-    state = state.copyWith(
-        error: null, successMessage: null);
-  }
-
-  void clearSuccess() {
-    state = state.copyWith(
-        successMessage: null, error: null);
-  }
-
-  // ── REFRESH ───────────────────────────────────────
-  Future<void> refresh() => loadProfile();
-
-  // ── HELPER ────────────────────────────────────────
+  // ── ERROR HELPER ──────────────────────────────────
   String _friendlyError(Object e) {
-    final msg = e.toString();
+    final msg = e.toString().toLowerCase();
     if (msg.contains('network') ||
         msg.contains('socket')) {
-      return 'No internet connection. Please try again.';
+      return 'No internet connection. Please check your network.';
+    }
+    if (msg.contains('timeout')) {
+      return 'Request timed out. Please try again.';
+    }
+    if (msg.contains('not-found') ||
+        msg.contains('not found')) {
+      return 'Profile not found. Please try again.';
     }
     if (msg.contains('permission')) {
       return 'You do not have permission for this action.';
@@ -614,7 +553,7 @@ class OtherProfileNotifier
     state = state.copyWith(
       loadingIds: {
         ...state.loadingIds,
-        profileId
+        profileId,
       },
     );
 
@@ -624,7 +563,8 @@ class OtherProfileNotifier
 
       if (profile != null) {
         final newCache =
-        Map<String, ProfileModel>.from(state.cache)
+        Map<String, ProfileModel>.from(
+            state.cache)
           ..[profileId] = profile;
         final newLoading =
         Set<String>.from(state.loadingIds)

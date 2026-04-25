@@ -10,7 +10,7 @@ import 'package:rishta_app/core/constants/app_text_styles.dart';
 import 'package:rishta_app/core/widgets/block_report_dialog.dart';
 import 'package:rishta_app/providers/interest_provider.dart';
 import 'package:rishta_app/providers/profile_provider.dart';
-import 'package:rishta_app/presentation/home/home_screen.dart';
+import 'package:rishta_app/data/mock/mock_profiles.dart';
 
 // ─────────────────────────────────────────────────────────
 // PROFILE DETAIL SCREEN

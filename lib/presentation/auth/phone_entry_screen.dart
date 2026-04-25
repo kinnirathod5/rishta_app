@@ -28,7 +28,6 @@ class _PhoneEntryScreenState
   bool _hasError = false;
   String _errorText = '';
 
-  // Entry animation
   late AnimationController _entryCtrl;
   late Animation<double> _fade;
   late Animation<Offset> _slide;
@@ -38,19 +37,16 @@ class _PhoneEntryScreenState
     super.initState();
     _setupAnimations();
     _entryCtrl.forward();
-    // Auto focus after animation
-    Future.delayed(
-        const Duration(milliseconds: 500),
-            () {
-          if (mounted) _phoneFocus.requestFocus();
-        });
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) _phoneFocus.requestFocus();
+    });
+    _phoneFocus.addListener(() => setState(() {}));
   }
 
   void _setupAnimations() {
     _entryCtrl = AnimationController(
       vsync: this,
-      duration:
-      const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 500),
     );
     _fade = CurvedAnimation(
       parent: _entryCtrl,
@@ -72,8 +68,6 @@ class _PhoneEntryScreenState
     _phoneFocus.dispose();
     super.dispose();
   }
-
-  // ── VALIDATION ────────────────────────────────────────
 
   bool _validate() {
     final clean = _phone.replaceAll(' ', '');
@@ -99,14 +93,11 @@ class _PhoneEntryScreenState
     return true;
   }
 
-  // ── SEND OTP ──────────────────────────────────────────
-
   Future<void> _sendOtp() async {
     _phoneFocus.unfocus();
     if (!_validate()) return;
 
-    final clean =
-    _phone.replaceAll(' ', '');
+    final clean = _phone.replaceAll(' ', '');
 
     await ref.read(authProvider.notifier).sendOtp(
       phoneNumber: clean,
@@ -129,8 +120,7 @@ class _PhoneEntryScreenState
 
   String _formatDisplay(String digits) {
     if (digits.length == 10) {
-      return '${digits.substring(0, 5)} '
-          '${digits.substring(5)}';
+      return '${digits.substring(0, 5)} ${digits.substring(5)}';
     }
     return digits;
   }
@@ -149,11 +139,9 @@ class _PhoneEntryScreenState
           position: _slide,
           child: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                  24, 16, 24, 40),
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
               child: Column(
-                crossAxisAlignment:
-                CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildBackButton(),
                   const SizedBox(height: 32),
@@ -179,8 +167,6 @@ class _PhoneEntryScreenState
     );
   }
 
-  // ── BACK BUTTON ───────────────────────────────────────
-
   Widget _buildBackButton() {
     return GestureDetector(
       onTap: () => context.go('/welcome'),
@@ -190,8 +176,7 @@ class _PhoneEntryScreenState
         decoration: BoxDecoration(
           color: AppColors.ivoryDark,
           borderRadius: BorderRadius.circular(12),
-          border:
-          Border.all(color: AppColors.border),
+          border: Border.all(color: AppColors.border),
         ),
         child: const Center(
           child: Icon(
@@ -204,207 +189,165 @@ class _PhoneEntryScreenState
     );
   }
 
-  // ── HEADER ────────────────────────────────────────────
-
   Widget _buildHeader() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          '📱',
-          style: TextStyle(fontSize: 44),
-        ),
+        const Text('📱', style: TextStyle(fontSize: 44)),
         const SizedBox(height: 16),
-        Text(
-          AppStrings.enterPhone,
-          style: AppTextStyles.onboardTitle,
-        ),
+        Text(AppStrings.enterPhone, style: AppTextStyles.onboardTitle),
         const SizedBox(height: 10),
-        Text(
-          AppStrings.otpWillBeSent,
-          style: AppTextStyles.onboardSubtitle,
-        ),
+        Text(AppStrings.otpWillBeSent, style: AppTextStyles.onboardSubtitle),
       ],
     );
   }
 
-  // ── PHONE FIELD ───────────────────────────────────────
-
   Widget _buildPhoneField() {
+    final isFocused = _phoneFocus.hasFocus;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Label
         Row(children: [
-          Text(
-            AppStrings.mobileNumber,
-            style: AppTextStyles.inputLabel,
-          ),
+          Text(AppStrings.mobileNumber, style: AppTextStyles.inputLabel),
           Text(' *',
-              style: AppTextStyles.inputLabel
-                  .copyWith(
-                  color: AppColors.crimson)),
+              style: AppTextStyles.inputLabel.copyWith(color: AppColors.crimson)),
         ]),
         const SizedBox(height: 7),
-        // Field
+
+        // ✅ FIX: AnimatedContainer sirf border draw karta hai
+        //         ClipRRect content ko corners ke andar rakhta hai
         AnimatedContainer(
-          duration:
-          const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius:
-            BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: _hasError
                   ? AppColors.error
-                  : _phoneFocus.hasFocus
+                  : isFocused
                   ? AppColors.crimson
                   : AppColors.border,
-              width: (_hasError ||
-                  _phoneFocus.hasFocus)
-                  ? 2
-                  : 1.5,
+              width: (_hasError || isFocused) ? 2 : 1.5,
             ),
           ),
-          child: Row(
-            children: [
-              // Country code prefix
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 15),
-                decoration: const BoxDecoration(
-                  border: Border(
-                    right: BorderSide(
-                        color: AppColors.border,
-                        width: 1.5),
-                  ),
-                ),
-                child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        '🇮🇳',
-                        style: TextStyle(fontSize: 18),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: ColoredBox(
+              color: AppColors.white,
+              child: Row(
+                children: [
+                  // Country code prefix
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 15),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        right: BorderSide(
+                            color: AppColors.border, width: 1.5),
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '+91',
-                        style: AppTextStyles.inputText
-                            .copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.inkSoft,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons
-                            .keyboard_arrow_down_rounded,
-                        size: 16,
-                        color: AppColors.muted,
-                      ),
-                    ]),
-              ),
-              // Phone number input
-              Expanded(
-                child: TextField(
-                  controller: _phoneCtrl,
-                  focusNode: _phoneFocus,
-                  keyboardType:
-                  TextInputType.phone,
-                  textInputAction:
-                  TextInputAction.done,
-                  maxLength: 11,
-                  // 10 digits + 1 space
-                  inputFormatters: [
-                    FilteringTextInputFormatter
-                        .digitsOnly,
-                    _PhoneFormatter(),
-                  ],
-                  style: AppTextStyles.inputText
-                      .copyWith(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.5,
-                  ),
-                  cursorColor: AppColors.crimson,
-                  decoration: InputDecoration(
-                    hintText:
-                    AppStrings.phonePlaceholder,
-                    hintStyle: AppTextStyles
-                        .inputHint
-                        .copyWith(
-                      fontSize: 18,
-                      letterSpacing: 1.5,
                     ),
-                    border: InputBorder.none,
-                    enabledBorder:
-                    InputBorder.none,
-                    focusedBorder:
-                    InputBorder.none,
-                    counterText: '',
-                    contentPadding:
-                    const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14),
-                    // Clear button
-                    suffixIcon: _phone.isNotEmpty
-                        ? GestureDetector(
-                      onTap: () {
-                        _phoneCtrl.clear();
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('🇮🇳', style: TextStyle(fontSize: 18)),
+                        const SizedBox(width: 6),
+                        Text(
+                          '+91',
+                          style: AppTextStyles.inputText.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.inkSoft,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 16,
+                          color: AppColors.muted,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Phone input
+                  Expanded(
+                    child: TextField(
+                      controller: _phoneCtrl,
+                      focusNode: _phoneFocus,
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.done,
+                      maxLength: 11,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        _PhoneFormatter(),
+                      ],
+                      style: AppTextStyles.inputText.copyWith(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.5,
+                      ),
+                      cursorColor: AppColors.crimson,
+                      decoration: InputDecoration(
+                        hintText: AppStrings.phonePlaceholder,
+                        hintStyle: AppTextStyles.inputHint.copyWith(
+                          fontSize: 18,
+                          letterSpacing: 1.5,
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        counterText: '',
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        suffixIcon: _phone.isNotEmpty
+                            ? GestureDetector(
+                          onTap: () {
+                            _phoneCtrl.clear();
+                            setState(() {
+                              _phone = '';
+                              _hasError = false;
+                            });
+                          },
+                          child: const Icon(
+                            Icons.close_rounded,
+                            size: 18,
+                            color: AppColors.muted,
+                          ),
+                        )
+                            : null,
+                      ),
+                      onChanged: (v) {
                         setState(() {
-                          _phone = '';
-                          _hasError = false;
+                          _phone = v;
+                          if (_hasError) {
+                            _hasError = false;
+                            _errorText = '';
+                          }
                         });
                       },
-                      child: const Icon(
-                        Icons.close_rounded,
-                        size: 18,
-                        color: AppColors.muted,
-                      ),
-                    )
-                        : null,
+                      onSubmitted: (_) => _sendOtp(),
+                    ),
                   ),
-                  onChanged: (v) {
-                    setState(() {
-                      _phone = v;
-                      if (_hasError) {
-                        _hasError = false;
-                        _errorText = '';
-                      }
-                    });
-                  },
-                  onSubmitted: (_) => _sendOtp(),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ],
     );
   }
-
-  // ── ERROR MESSAGE ─────────────────────────────────────
 
   Widget _buildErrorMessage() {
     return AnimatedSize(
       duration: const Duration(milliseconds: 200),
       child: _hasError
           ? Padding(
-        padding: const EdgeInsets.only(
-            top: 6),
+        padding: const EdgeInsets.only(top: 6),
         child: Row(children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            size: 14,
-            color: AppColors.error,
-          ),
+          const Icon(Icons.error_outline_rounded,
+              size: 14, color: AppColors.error),
           const SizedBox(width: 6),
           Expanded(
-            child: Text(
-              _errorText,
-              style: AppTextStyles
-                  .inputError,
-            ),
+            child: Text(_errorText,
+                style: AppTextStyles.inputError),
           ),
         ]),
       )
@@ -412,47 +355,28 @@ class _PhoneEntryScreenState
     );
   }
 
-  // ── SEND BUTTON ───────────────────────────────────────
-
   Widget _buildSendButton(bool isLoading) {
     final canSend =
-        _phone.replaceAll(' ', '').length == 10 &&
-            !isLoading;
+        _phone.replaceAll(' ', '').length == 10 && !isLoading;
 
     return PrimaryButton(
-      label: isLoading
-          ? AppStrings.sendingOtp
-          : AppStrings.sendOtp,
+      label: isLoading ? AppStrings.sendingOtp : AppStrings.sendOtp,
       isLoading: isLoading,
-      icon: isLoading
-          ? null
-          : Icons.send_rounded,
+      icon: isLoading ? null : Icons.send_rounded,
       onPressed: canSend ? _sendOtp : null,
     );
   }
 
-  // ── DIVIDER ───────────────────────────────────────────
-
   Widget _buildDivider() {
     return Row(children: [
-      const Expanded(
-          child: Divider(
-              color: AppColors.border)),
+      const Expanded(child: Divider(color: AppColors.border)),
       Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: 16),
-        child: Text(
-          AppStrings.orDivider,
-          style: AppTextStyles.labelSmall,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Text(AppStrings.orDivider, style: AppTextStyles.labelSmall),
       ),
-      const Expanded(
-          child: Divider(
-              color: AppColors.border)),
+      const Expanded(child: Divider(color: AppColors.border)),
     ]);
   }
-
-  // ── GUEST BUTTON ──────────────────────────────────────
 
   Widget _buildGuestButton(bool isLoading) {
     return SecondaryButton(
@@ -472,16 +396,13 @@ class _PhoneEntryScreenState
     );
   }
 
-  // ── TERMS ─────────────────────────────────────────────
-
   Widget _buildTerms() {
     return Center(
       child: Text.rich(
         TextSpan(
           style: AppTextStyles.bodySmall,
           children: [
-            TextSpan(
-                text: AppStrings.termsPrefix),
+            TextSpan(text: AppStrings.termsPrefix),
             TextSpan(
               text: AppStrings.termsLink,
               style: const TextStyle(
@@ -511,7 +432,6 @@ class _PhoneEntryScreenState
 
 // ─────────────────────────────────────────────────────────
 // PHONE FORMATTER
-// Auto-formats: 9876543210 → 98765 43210
 // ─────────────────────────────────────────────────────────
 
 class _PhoneFormatter extends TextInputFormatter {
@@ -520,24 +440,17 @@ class _PhoneFormatter extends TextInputFormatter {
       TextEditingValue oldValue,
       TextEditingValue newValue,
       ) {
-    final digits = newValue.text
-        .replaceAll(RegExp(r'[^0-9]'), '');
-
-    final limited = digits.length > 10
-        ? digits.substring(0, 10)
-        : digits;
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final limited = digits.length > 10 ? digits.substring(0, 10) : digits;
 
     String formatted = limited;
     if (limited.length > 5) {
-      formatted =
-      '${limited.substring(0, 5)} '
-          '${limited.substring(5)}';
+      formatted = '${limited.substring(0, 5)} ${limited.substring(5)}';
     }
 
     return TextEditingValue(
       text: formatted,
-      selection: TextSelection.collapsed(
-          offset: formatted.length),
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

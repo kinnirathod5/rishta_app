@@ -5,6 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:rishta_app/core/constants/app_colors.dart';
 import 'package:rishta_app/core/constants/app_text_styles.dart';
 
+// ── MOCK DATA ─────────────────────────────────────────────
+// ✅ FIX: MockProfile sirf ek jagah se import hoga
+import 'package:rishta_app/data/mock/mock_profiles.dart';
+
 // ── AUTH ──────────────────────────────────────────────────
 import 'package:rishta_app/presentation/auth/splash_screen.dart';
 import 'package:rishta_app/presentation/auth/welcome_screen.dart';
@@ -25,8 +29,8 @@ import 'package:rishta_app/presentation/shell/main_shell.dart';
 
 // ── MAIN APP ──────────────────────────────────────────────
 import 'package:rishta_app/presentation/home/home_screen.dart';
-import 'package:rishta_app/presentation/home/search_screen.dart';
-import 'package:rishta_app/presentation/home/profile_detail_screen.dart';
+import 'package:rishta_app/presentation/search/search_screen.dart';
+import 'package:rishta_app/presentation/profile/profile_detail_screen.dart';
 import 'package:rishta_app/presentation/profile/my_profile_screen.dart';
 import 'package:rishta_app/presentation/profile/profile_preview_screen.dart';
 import 'package:rishta_app/presentation/profile/edit_profile_screen.dart';
@@ -34,7 +38,6 @@ import 'package:rishta_app/presentation/chat/chat_inbox_screen.dart';
 import 'package:rishta_app/presentation/chat/chat_window_screen.dart';
 
 // ── PLACEHOLDER SCREENS ───────────────────────────────────
-// These will be replaced one by one with full implementations
 import 'package:rishta_app/presentation/placeholder_screens.dart';
 import 'package:rishta_app/presentation/interests/interests_screen.dart';
 
@@ -55,7 +58,6 @@ import 'package:rishta_app/presentation/settings/delete_account_screen.dart';
 
 // ─────────────────────────────────────────────────────────
 // ROUTE PATHS
-// Single source of truth for all route strings
 // ─────────────────────────────────────────────────────────
 
 abstract class AppRoute {
@@ -105,14 +107,8 @@ abstract class AppRoute {
   static const String deleteAccount = '/delete-account';
 
   // ── PATH HELPERS ──────────────────────────────────
-
-  /// '/profile/abc123'
-  static String profileDetailPath(String uid) =>
-      '/profile/$uid';
-
-  /// '/chat/chatId123'
-  static String chatWindowPath(String chatId) =>
-      '/chat/$chatId';
+  static String profileDetailPath(String uid) => '/profile/$uid';
+  static String chatWindowPath(String chatId) => '/chat/$chatId';
 }
 
 // ─────────────────────────────────────────────────────────
@@ -125,25 +121,6 @@ abstract class AppRoutes {
   static final GoRouter router = GoRouter(
     initialLocation: AppRoute.splash,
     debugLogDiagnostics: false,
-
-    // ── REDIRECT ──────────────────────────────────
-    // TODO: Phase 3 — Firebase auth redirect
-    // redirect: (context, state) {
-    //   final container =
-    //       ProviderScope.containerOf(context);
-    //   final isLoggedIn =
-    //       container.read(isLoggedInProvider);
-    //   final authRoutes = [
-    //     AppRoute.welcome, AppRoute.phone,
-    //     AppRoute.otp,     AppRoute.explore,
-    //   ];
-    //   final isAuthRoute = authRoutes.any(
-    //       (r) => state.uri.path.startsWith(r));
-    //   if (!isLoggedIn && !isAuthRoute) {
-    //     return AppRoute.welcome;
-    //   }
-    //   return null;
-    // },
 
     routes: [
 
@@ -168,8 +145,7 @@ abstract class AppRoutes {
         path: AppRoute.phone,
         name: 'phone',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const PhoneEntryScreen()),
+            _slide(state, const PhoneEntryScreen()),
       ),
 
       // ── OTP ─────────────────────────────────────
@@ -177,12 +153,8 @@ abstract class AppRoutes {
         path: AppRoute.otp,
         name: 'otp',
         pageBuilder: (context, state) {
-          final phone =
-              state.extra as String? ?? '';
-          return _slide(
-            state,
-            OtpScreen(phoneNumber: phone),
-          );
+          final phone = state.extra as String? ?? '';
+          return _slide(state, OtpScreen(phoneNumber: phone));
         },
       ),
 
@@ -191,8 +163,7 @@ abstract class AppRoutes {
         path: AppRoute.explore,
         name: 'explore',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const ExploreFirstScreen()),
+            _slide(state, const ExploreFirstScreen()),
       ),
 
       // ── PROFILE TYPE ────────────────────────────
@@ -200,58 +171,41 @@ abstract class AppRoutes {
         path: AppRoute.profileType,
         name: 'profileType',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const ProfileTypeScreen()),
+            _slide(state, const ProfileTypeScreen()),
       ),
 
-      // ── PROFILE SETUP — Step 1 ──────────────────
+      // ── PROFILE SETUP — Steps ────────────────────
       GoRoute(
         path: AppRoute.step1,
         name: 'step1',
         pageBuilder: (context, state) {
-          final extra = state.extra
-          as Map<String, dynamic>?;
-          return _slide(
-            state,
-            Step1BasicInfo(extra: extra),
-          );
+          final extra = state.extra as Map<String, dynamic>?;
+          return _slide(state, Step1BasicInfo(extra: extra));
         },
       ),
-
-      // ── PROFILE SETUP — Step 2 ──────────────────
       GoRoute(
         path: AppRoute.step2,
         name: 'step2',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const Step2Religion()),
+            _slide(state, const Step2Religion()),
       ),
-
-      // ── PROFILE SETUP — Step 3 ──────────────────
       GoRoute(
         path: AppRoute.step3,
         name: 'step3',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const Step3Education()),
+            _slide(state, const Step3Education()),
       ),
-
-      // ── PROFILE SETUP — Step 4 ──────────────────
       GoRoute(
         path: AppRoute.step4,
         name: 'step4',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const Step4Family()),
+            _slide(state, const Step4Family()),
       ),
-
-      // ── PROFILE SETUP — Step 5 ──────────────────
       GoRoute(
         path: AppRoute.step5,
         name: 'step5',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const Step5Photos()),
+            _slide(state, const Step5Photos()),
       ),
 
       // ── SHELL — Bottom Nav ───────────────────────
@@ -263,36 +217,31 @@ abstract class AppRoutes {
             path: AppRoute.home,
             name: 'home',
             pageBuilder: (context, state) =>
-                _none(state,
-                    const HomeScreen()),
+                _none(state, const HomeScreen()),
           ),
           GoRoute(
             path: AppRoute.search,
             name: 'search',
             pageBuilder: (context, state) =>
-                _none(state,
-                    const SearchScreen()),
+                _none(state, const SearchScreen()),
           ),
           GoRoute(
             path: AppRoute.interests,
             name: 'interests',
             pageBuilder: (context, state) =>
-                _none(state,
-                    const InterestsScreen()),
+                _none(state, const InterestsScreen()),
           ),
           GoRoute(
             path: AppRoute.chat,
             name: 'chat',
             pageBuilder: (context, state) =>
-                _none(state,
-                    const ChatInboxScreen()),
+                _none(state, const ChatInboxScreen()),
           ),
           GoRoute(
             path: AppRoute.myProfile,
             name: 'myProfile',
             pageBuilder: (context, state) =>
-                _none(state,
-                    const MyProfileScreen()),
+                _none(state, const MyProfileScreen()),
           ),
         ],
       ),
@@ -302,16 +251,12 @@ abstract class AppRoutes {
         path: AppRoute.profileDetail,
         name: 'profileDetail',
         pageBuilder: (context, state) {
-          final uid =
-              state.pathParameters['uid'] ?? '';
-          final profile =
-          state.extra as MockProfile?;
+          final uid = state.pathParameters['uid'] ?? '';
+          // ✅ MockProfile ab mock_profiles.dart se aata hai
+          final profile = state.extra as MockProfile?;
           return _slide(
             state,
-            ProfileDetailScreen(
-              profileId: uid,
-              profile: profile,
-            ),
+            ProfileDetailScreen(profileId: uid, profile: profile),
           );
         },
       ),
@@ -321,8 +266,7 @@ abstract class AppRoutes {
         path: AppRoute.profilePreview,
         name: 'profilePreview',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const ProfilePreviewScreen()),
+            _slide(state, const ProfilePreviewScreen()),
       ),
 
       // ── EDIT PROFILE ────────────────────────────
@@ -330,8 +274,7 @@ abstract class AppRoutes {
         path: AppRoute.editProfile,
         name: 'editProfile',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const EditProfileScreen()),
+            _slide(state, const EditProfileScreen()),
       ),
 
       // ── SHORTLISTED ─────────────────────────────
@@ -339,8 +282,7 @@ abstract class AppRoutes {
         path: AppRoute.shortlisted,
         name: 'shortlisted',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const ShortlistedScreen()),
+            _slide(state, const ShortlistedScreen()),
       ),
 
       // ── WHO VIEWED ──────────────────────────────
@@ -348,8 +290,7 @@ abstract class AppRoutes {
         path: AppRoute.whoViewed,
         name: 'whoViewed',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const WhoViewedScreen()),
+            _slide(state, const WhoViewedScreen()),
       ),
 
       // ── PARTNER PREFERENCE ──────────────────────
@@ -357,8 +298,7 @@ abstract class AppRoutes {
         path: AppRoute.partnerPref,
         name: 'partnerPref',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const PartnerPreferenceScreen()),
+            _slide(state, const PartnerPreferenceScreen()),
       ),
 
       // ── HOROSCOPE ───────────────────────────────
@@ -366,8 +306,7 @@ abstract class AppRoutes {
         path: AppRoute.horoscope,
         name: 'horoscope',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const HoroscopeScreen()),
+            _slide(state, const HoroscopeScreen()),
       ),
 
       // ── ID VERIFICATION ─────────────────────────
@@ -375,8 +314,7 @@ abstract class AppRoutes {
         path: AppRoute.idVerification,
         name: 'idVerification',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const IdVerificationScreen()),
+            _slide(state, const IdVerificationScreen()),
       ),
 
       // ── BLOCKED USERS ───────────────────────────
@@ -384,8 +322,7 @@ abstract class AppRoutes {
         path: AppRoute.blockedUsers,
         name: 'blockedUsers',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const BlockedUsersScreen()),
+            _slide(state, const BlockedUsersScreen()),
       ),
 
       // ── CHAT WINDOW ─────────────────────────────
@@ -393,13 +330,8 @@ abstract class AppRoutes {
         path: AppRoute.chatWindow,
         name: 'chatWindow',
         pageBuilder: (context, state) {
-          final chatId =
-              state.pathParameters['chatId'] ??
-                  '';
-          return _slide(
-            state,
-            ChatWindowScreen(chatId: chatId),
-          );
+          final chatId = state.pathParameters['chatId'] ?? '';
+          return _slide(state, ChatWindowScreen(chatId: chatId));
         },
       ),
 
@@ -408,8 +340,7 @@ abstract class AppRoutes {
         path: AppRoute.notifications,
         name: 'notifications',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const NotificationsScreen()),
+            _slide(state, const NotificationsScreen()),
       ),
 
       // ── PREMIUM ─────────────────────────────────
@@ -417,8 +348,7 @@ abstract class AppRoutes {
         path: AppRoute.premium,
         name: 'premium',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const PremiumScreen()),
+            _slide(state, const PremiumScreen()),
       ),
 
       // ── PRIVACY ─────────────────────────────────
@@ -426,8 +356,7 @@ abstract class AppRoutes {
         path: AppRoute.privacy,
         name: 'privacy',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const PrivacyScreen()),
+            _slide(state, const PrivacyScreen()),
       ),
 
       // ── HELP & SUPPORT ──────────────────────────
@@ -435,8 +364,7 @@ abstract class AppRoutes {
         path: AppRoute.helpSupport,
         name: 'helpSupport',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const HelpSupportScreen()),
+            _slide(state, const HelpSupportScreen()),
       ),
 
       // ── DELETE ACCOUNT ──────────────────────────
@@ -444,12 +372,10 @@ abstract class AppRoutes {
         path: AppRoute.deleteAccount,
         name: 'deleteAccount',
         pageBuilder: (context, state) =>
-            _slide(state,
-                const DeleteAccountScreen()),
+            _slide(state, const DeleteAccountScreen()),
       ),
     ],
 
-    // ── ERROR PAGE ────────────────────────────────
     errorPageBuilder: (context, state) =>
         _none(state, const _ErrorScreen()),
   );
@@ -458,31 +384,20 @@ abstract class AppRoutes {
   // PAGE TRANSITIONS
   // ─────────────────────────────────────────────────
 
-  /// Slide from right — standard push
   static CustomTransitionPage<void> _slide(
-      GoRouterState state,
-      Widget child,
-      ) {
+      GoRouterState state, Widget child) {
     return CustomTransitionPage<void>(
       key: state.pageKey,
       child: child,
-      transitionDuration:
-      const Duration(milliseconds: 280),
-      reverseTransitionDuration:
-      const Duration(milliseconds: 220),
-      transitionsBuilder: (
-          _,
-          animation,
-          secondaryAnimation,
-          child,
-          ) {
+      transitionDuration: const Duration(milliseconds: 280),
+      reverseTransitionDuration: const Duration(milliseconds: 220),
+      transitionsBuilder: (_, animation, secondaryAnimation, child) {
         return SlideTransition(
           position: animation.drive(
             Tween<Offset>(
               begin: const Offset(1.0, 0.0),
               end: Offset.zero,
-            ).chain(CurveTween(
-                curve: Curves.easeOut)),
+            ).chain(CurveTween(curve: Curves.easeOut)),
           ),
           child: child,
         );
@@ -490,30 +405,19 @@ abstract class AppRoutes {
     );
   }
 
-  /// Fade — splash + welcome only
   static CustomTransitionPage<void> _fade(
-      GoRouterState state,
-      Widget child,
-      ) {
+      GoRouterState state, Widget child) {
     return CustomTransitionPage<void>(
       key: state.pageKey,
       child: child,
-      transitionDuration:
-      const Duration(milliseconds: 400),
-      transitionsBuilder:
-          (_, animation, __, child) =>
-          FadeTransition(
-            opacity: animation,
-            child: child,
-          ),
+      transitionDuration: const Duration(milliseconds: 400),
+      transitionsBuilder: (_, animation, __, child) =>
+          FadeTransition(opacity: animation, child: child),
     );
   }
 
-  /// No animation — bottom nav tab switches
   static NoTransitionPage<void> _none(
-      GoRouterState state,
-      Widget child,
-      ) {
+      GoRouterState state, Widget child) {
     return NoTransitionPage<void>(
       key: state.pageKey,
       child: child,
@@ -536,29 +440,22 @@ class _ErrorScreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
-            mainAxisAlignment:
-            MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
                 width: 88,
                 height: 88,
                 decoration: BoxDecoration(
                   color: AppColors.crimsonSurface,
-                  borderRadius:
-                  BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(22),
                 ),
                 child: const Center(
-                  child: Text('😕',
-                      style: TextStyle(
-                          fontSize: 44)),
+                  child: Text('😕', style: TextStyle(fontSize: 44)),
                 ),
               ),
               const SizedBox(height: 24),
-              Text(
-                'Page Not Found',
-                style: AppTextStyles.h3,
-                textAlign: TextAlign.center,
-              ),
+              Text('Page Not Found',
+                  style: AppTextStyles.h3, textAlign: TextAlign.center),
               const SizedBox(height: 12),
               Text(
                 'The page you are looking for\ndoes not exist.',
@@ -570,21 +467,15 @@ class _ErrorScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () =>
-                      context.go(AppRoute.home),
-                  child:
-                  const Text('Go to Home'),
+                  onPressed: () => context.go(AppRoute.home),
+                  child: const Text('Go to Home'),
                 ),
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () => context
-                    .go(AppRoute.welcome),
-                child: Text(
-                  'Go to Welcome Screen',
-                  style: AppTextStyles
-                      .buttonSecondary,
-                ),
+                onPressed: () => context.go(AppRoute.welcome),
+                child: Text('Go to Welcome Screen',
+                    style: AppTextStyles.buttonSecondary),
               ),
             ],
           ),
