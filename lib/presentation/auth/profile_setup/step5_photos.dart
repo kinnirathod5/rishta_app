@@ -8,7 +8,6 @@ import 'package:rishta_app/core/constants/app_colors.dart';
 import 'package:rishta_app/core/constants/app_text_styles.dart';
 import 'package:rishta_app/core/widgets/custom_button.dart';
 import 'package:rishta_app/core/widgets/loading_overlay.dart';
-import 'package:rishta_app/providers/auth_provider.dart';
 import 'package:rishta_app/providers/profile_provider.dart';
 
 // ─────────────────────────────────────────────────────────
@@ -26,18 +25,13 @@ class _PhotoSlot {
     this.isUploading = false,
   });
 
-  bool get hasPhoto =>
-      url != null && url!.isNotEmpty;
+  bool get hasPhoto => url != null && url!.isNotEmpty;
 
-  _PhotoSlot copyWith({
-    String? url,
-    bool? isUploading,
-  }) {
+  _PhotoSlot copyWith({String? url, bool? isUploading}) {
     return _PhotoSlot(
       index: index,
       url: url ?? this.url,
-      isUploading:
-      isUploading ?? this.isUploading,
+      isUploading: isUploading ?? this.isUploading,
     );
   }
 }
@@ -50,29 +44,26 @@ class Step5Photos extends ConsumerStatefulWidget {
   const Step5Photos({super.key});
 
   @override
-  ConsumerState<Step5Photos> createState() =>
-      _Step5PhotosState();
+  ConsumerState<Step5Photos> createState() => _Step5PhotosState();
 }
 
-class _Step5PhotosState
-    extends ConsumerState<Step5Photos>
+class _Step5PhotosState extends ConsumerState<Step5Photos>
     with SingleTickerProviderStateMixin {
 
-  // 6 photo slots
+  // Max 6 slots in Phase 1-2 (10 in Phase 3)
+  static const int _maxSlots = 6;
+
   late List<_PhotoSlot> _slots;
 
-  // Entry animation
+  // Animation
   late AnimationController _ctrl;
-  late Animation<double> _fade;
-  late Animation<Offset> _slide;
+  late Animation<double>   _fade;
+  late Animation<Offset>   _slide;
 
   @override
   void initState() {
     super.initState();
-    _slots = List.generate(
-      6,
-          (i) => _PhotoSlot(index: i),
-    );
+    _slots = List.generate(_maxSlots, (i) => _PhotoSlot(index: i));
     _setupAnimation();
     _ctrl.forward();
     _loadExistingPhotos();
@@ -81,32 +72,22 @@ class _Step5PhotosState
   void _setupAnimation() {
     _ctrl = AnimationController(
       vsync: this,
-      duration:
-      const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 450),
     );
-    _fade = CurvedAnimation(
-        parent: _ctrl, curve: Curves.easeOut);
+    _fade  = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
     _slide = Tween<Offset>(
       begin: const Offset(0, 0.05),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-        parent: _ctrl, curve: Curves.easeOut));
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   void _loadExistingPhotos() {
-    final profile =
-    ref.read(currentProfileProvider);
+    final profile = ref.read(currentProfileProvider);
     if (profile == null) return;
-
     final photos = profile.photoUrls;
     setState(() {
-      for (int i = 0;
-      i < photos.length && i < 6;
-      i++) {
-        _slots[i] = _PhotoSlot(
-          index: i,
-          url: photos[i],
-        );
+      for (int i = 0; i < photos.length && i < _maxSlots; i++) {
+        _slots[i] = _PhotoSlot(index: i, url: photos[i]);
       }
     });
   }
@@ -119,264 +100,207 @@ class _Step5PhotosState
 
   // ── COMPUTED ──────────────────────────────────────────
 
-  int get _photoCount =>
-      _slots.where((s) => s.hasPhoto).length;
-
+  int get _photoCount => _slots.where((s) => s.hasPhoto).length;
   bool get _hasEnoughPhotos => _photoCount >= 1;
-
   List<String> get _photoUrls =>
-      _slots
-          .where((s) => s.hasPhoto)
-          .map((s) => s.url!)
-          .toList();
+      _slots.where((s) => s.hasPhoto).map((s) => s.url!).toList();
 
-  double get _profileScore {
-    final profile =
-    ref.read(currentProfileProvider);
-    if (profile == null) return 0;
-    return profile.profileScore.toDouble();
-  }
-
-  // ── PHOTO ACTIONS ─────────────────────────────────────
+  // ── ACTIONS ───────────────────────────────────────────
 
   void _onSlotTap(int index) {
+    HapticFeedback.lightImpact();
     final slot = _slots[index];
-    if (slot.hasPhoto) {
-      _showPhotoOptions(index);
-    } else {
-      _showAddPhotoSheet(index);
-    }
+    _showPhotoOptions(index, slot.hasPhoto);
   }
 
-  void _showAddPhotoSheet(int index) {
-    HapticFeedback.lightImpact();
+  void _showPhotoOptions(int index, bool hasPhoto) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-            top: Radius.circular(20)),
-      ),
-      builder: (_) => _AddPhotoSheet(
+      backgroundColor: Colors.transparent,
+      builder: (_) => _PhotoOptionsSheet(
+        index: index,
+        hasPhoto: hasPhoto,
+        isMainSlot: index == 0,
         onGallery: () {
           Navigator.pop(context);
-          _mockUploadPhoto(index);
+          _mockAddPhoto(index, 'gallery');
         },
         onCamera: () {
           Navigator.pop(context);
-          _mockUploadPhoto(index);
+          _mockAddPhoto(index, 'camera');
         },
-      ),
-    );
-  }
-
-  void _showPhotoOptions(int index) {
-    HapticFeedback.lightImpact();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-            top: Radius.circular(20)),
-      ),
-      builder: (_) => _PhotoOptionsSheet(
-        isMain: index == 0,
-        onSetMain: index != 0
+        onSetMain: hasPhoto && index != 0
             ? () {
           Navigator.pop(context);
-          _setMainPhoto(index);
+          _setAsMain(index);
         }
             : null,
-        onReplace: () {
-          Navigator.pop(context);
-          _mockUploadPhoto(index);
-        },
-        onDelete: () {
+        onDelete: hasPhoto
+            ? () {
           Navigator.pop(context);
           _deletePhoto(index);
-        },
+        }
+            : null,
       ),
     );
   }
 
-  // Mock photo upload — Phase 3: image_picker
-  Future<void> _mockUploadPhoto(
-      int index) async {
-    // Set uploading state
+  // Mock photo add — Phase 3 mein image_picker use hoga
+  void _mockAddPhoto(int index, String source) {
     setState(() {
-      _slots[index] =
-          _slots[index].copyWith(
-              isUploading: true);
+      _slots[index] = _slots[index].copyWith(isUploading: true);
     });
 
     // Simulate upload delay
-    await Future.delayed(
-        const Duration(milliseconds: 1200));
-
-    if (!mounted) return;
-
-    // Mock URL — Phase 3: real upload URL
-    const mockEmojis = [
-      '👩', '👨', '👩‍💼', '👨‍💼',
-      '👩‍🎓', '👨‍🎓',
-    ];
-    final mockUrl =
-        'mock://photo_${index}_'
-        '${DateTime.now().millisecondsSinceEpoch}';
-
-    setState(() {
-      _slots[index] = _PhotoSlot(
-        index: index,
-        url: mockUrl,
-        isUploading: false,
-      );
-    });
-  }
-
-  void _setMainPhoto(int index) {
-    if (!_slots[index].hasPhoto) return;
-    setState(() {
-      final current = _slots[0];
-      final selected = _slots[index];
-      _slots[0] = _PhotoSlot(
-          index: 0, url: selected.url);
-      _slots[index] = _PhotoSlot(
-          index: index, url: current.url);
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      // Mock emoji URL — Phase 3: real Firebase Storage URL
+      final mockEmojis = ['👩', '👩‍💼', '👩‍⚕️', '👩‍🔬', '👩‍💻', '👩‍🏫'];
+      setState(() {
+        _slots[index] = _PhotoSlot(
+          index: index,
+          url: 'mock_photo_${index}_${DateTime.now().millisecondsSinceEpoch}',
+          isUploading: false,
+        );
+      });
+      _showSnack('Photo added! ✓', AppColors.success);
     });
   }
 
   void _deletePhoto(int index) {
+    // Can't delete main photo if it's the only one
+    if (index == 0 && _photoCount == 1) {
+      _showSnack('Add another photo before removing the main photo.', AppColors.error);
+      return;
+    }
+    HapticFeedback.mediumImpact();
     setState(() {
       // Shift remaining photos left
-      for (int i = index; i < 5; i++) {
-        _slots[i] = _PhotoSlot(
-          index: i,
-          url: _slots[i + 1].url,
-        );
+      final updatedSlots = List<_PhotoSlot>.from(_slots);
+      updatedSlots[index] = _PhotoSlot(index: index);
+
+      // If main photo deleted, promote next photo
+      if (index == 0) {
+        for (int i = 1; i < _maxSlots; i++) {
+          if (updatedSlots[i].hasPhoto) {
+            updatedSlots[0] = _PhotoSlot(index: 0, url: updatedSlots[i].url);
+            updatedSlots[i] = _PhotoSlot(index: i);
+            break;
+          }
+        }
       }
-      _slots[5] = _PhotoSlot(index: 5);
+      _slots = updatedSlots;
     });
   }
 
-  // ── COMPLETE PROFILE ──────────────────────────────────
+  void _setAsMain(int index) {
+    if (!_slots[index].hasPhoto) return;
+    HapticFeedback.selectionClick();
+    setState(() {
+      final mainUrl  = _slots[0].url;
+      final thisUrl  = _slots[index].url;
+      _slots[0]      = _PhotoSlot(index: 0, url: thisUrl);
+      _slots[index]  = _PhotoSlot(index: index, url: mainUrl);
+    });
+    _showSnack('Main photo updated! ✓', AppColors.success);
+  }
+
+  // ── COMPLETE ──────────────────────────────────────────
 
   Future<void> _complete() async {
-    final profileId =
-        ref.read(currentProfileProvider)?.id;
-    final uid = ref.read(currentUidProvider);
-
-    if (profileId == null || uid == null) {
-      _showError(
-          'Profile not found. Please go back.');
-      return;
-    }
-
     final data = {
-      'photoUrls': _photoUrls,
-      if (_photoUrls.isNotEmpty)
-        'mainPhotoUrl': _photoUrls.first,
+      'photoUrls'  : _photoUrls,
+      'mainPhotoUrl': _photoUrls.isNotEmpty ? _photoUrls.first : null,
+      'setupStep'  : 5,
     };
 
-    bool ok;
-    if (_photoUrls.isNotEmpty) {
-      ok = await ref
-          .read(myProfileProvider.notifier)
-          .updateProfile(data);
-    } else {
-      // Skip photos — mark setup complete
-      ok = true;
-    }
-
+    final ok = await ref.read(myProfileProvider.notifier).updateProfile(data);
     if (!mounted) return;
-
     if (ok) {
-      // Mark profile setup complete
-      ref
-          .read(authProvider.notifier)
-          .markSetupComplete(profileId);
       context.go('/home');
     } else {
-      final error =
-          ref.read(myProfileProvider).error;
-      _showError(
-          error ?? 'Something went wrong.');
+      final error = ref.read(myProfileProvider).error;
+      _showSnack(error ?? 'Something went wrong.', AppColors.error);
     }
   }
 
-  void _showError(String msg) {
+  void _showSnack(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg,
-            style: const TextStyle(
-                color: Colors.white)),
-        backgroundColor: AppColors.error,
+        content: Text(msg, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+        backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius:
-            BorderRadius.circular(10)),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
 
+  // ── BUILD ─────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    final isSaving =
-        ref.watch(myProfileProvider).isSaving;
+    final isSaving = ref.watch(myProfileProvider).isSaving;
 
     return Scaffold(
       backgroundColor: AppColors.ivory,
       body: Stack(
         children: [
-          FadeTransition(
-            opacity: _fade,
-            child: SlideTransition(
-              position: _slide,
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    _buildHeader(),
-                    _buildProgressBar(),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding:
-                        const EdgeInsets
-                            .fromLTRB(
-                            24, 24,
-                            24, 100),
-                        physics:
-                        const BouncingScrollPhysics(),
-                        child: Column(
-                          crossAxisAlignment:
-                          CrossAxisAlignment
-                              .start,
-                          children: [
-                            _buildStepTitle(),
-                            const SizedBox(
-                                height: 24),
-                            _buildPhotoGrid(),
-                            const SizedBox(
-                                height: 20),
-                            _buildPhotoCount(),
-                            const SizedBox(
-                                height: 24),
-                            _buildTipsCard(),
-                            const SizedBox(
-                                height: 20),
-                            _buildGuidelinesCard(),
-                          ],
-                        ),
+          Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: FadeTransition(
+                  opacity: _fade,
+                  child: SlideTransition(
+                    position: _slide,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 140),
+                      physics: const BouncingScrollPhysics(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildStepTitle(),
+                          const SizedBox(height: 24),
+
+                          // Photo counter bar
+                          _buildPhotoCountBar(),
+                          const SizedBox(height: 20),
+
+                          // Main photo (large)
+                          _buildMainSlot(),
+                          const SizedBox(height: 10),
+
+                          // 5 secondary slots — 3 column grid
+                          _buildSecondaryGrid(),
+                          const SizedBox(height: 24),
+
+                          // Guidelines card
+                          _buildGuidelinesCard(),
+                          const SizedBox(height: 16),
+
+                          // Dev mode note
+                          _buildDevNote(),
+                        ],
                       ),
                     ),
-                    _buildBottomBar(isSaving),
-                  ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
+
+          // Bottom CTA bar
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: _buildBottomBar(isSaving),
+          ),
+
           if (isSaving)
             const LoadingOverlay(
-              message: 'Setting up profile...',
-              style: LoadingStyle.logo,
+              message: 'Saving profile...',
+              style: LoadingStyle.dots,
             ),
         ],
       ),
@@ -386,118 +310,89 @@ class _Step5PhotosState
   // ── HEADER ────────────────────────────────────────────
 
   Widget _buildHeader() {
+    final topPad = MediaQuery.of(context).padding.top;
     return Container(
-      color: AppColors.crimson,
-      padding: EdgeInsets.fromLTRB(
-        16,
-        MediaQuery.of(context).padding.top + 8,
-        16,
-        12,
+      decoration: const BoxDecoration(
+        gradient: AppColors.crimsonGradient,
       ),
-      child: Row(children: [
-        GestureDetector(
-          onTap: () =>
-              context.go('/setup/step4'),
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color:
-              Colors.white.withOpacity(0.15),
-              borderRadius:
-              BorderRadius.circular(10),
-            ),
-            child: const Center(
-              child: Icon(
-                  Icons.arrow_back_ios_new,
-                  size: 16,
-                  color: Colors.white),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Step 5 of 5 — Last Step! 🎉',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white
-                      .withOpacity(0.7),
-                  fontWeight: FontWeight.w500,
+      padding: EdgeInsets.fromLTRB(16, topPad + 10, 16, 12),
+      child: Column(
+        children: [
+          Row(children: [
+            GestureDetector(
+              onTap: () => context.go('/setup/step4'),
+              child: Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Icon(Icons.arrow_back_ios_new,
+                      size: 16, color: Colors.white),
                 ),
               ),
-              const Text(
-                'Profile Photos',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Step 5 of 5',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white.withOpacity(0.7),
+                        fontWeight: FontWeight.w500,
+                      )),
+                  const Text('Profile Photos',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      )),
+                ],
+              ),
+            ),
+            // Last step — no skip, show "Later" instead
+            GestureDetector(
+              onTap: () => context.go('/home'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              ),
-            ],
-          ),
-        ),
-        GestureDetector(
-          onTap: _complete,
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color:
-              Colors.white.withOpacity(0.15),
-              borderRadius:
-              BorderRadius.circular(100),
-            ),
-            child: Text(
-              'Skip',
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.white
-                    .withOpacity(0.9),
-                fontWeight: FontWeight.w500,
+                child: const Text('Do it later',
+                    style: TextStyle(fontSize: 12, color: Colors.white,
+                        fontWeight: FontWeight.w500)),
               ),
             ),
-          ),
-        ),
-      ]),
+          ]),
+          const SizedBox(height: 12),
+          _buildProgressBar(),
+        ],
+      ),
     );
   }
 
-  // ── PROGRESS BAR ──────────────────────────────────────
-
   Widget _buildProgressBar() {
-    return Container(
-      color: AppColors.crimson,
-      padding: const EdgeInsets.fromLTRB(
-          16, 0, 16, 12),
-      child: Row(
-        children: List.generate(5, (i) {
-          final isDone = i < 4;
-          final isCurrent = i == 4;
-          return Expanded(
-            child: Container(
-              margin: EdgeInsets.only(
-                  right: i < 4 ? 4 : 0),
-              height: 4,
-              decoration: BoxDecoration(
-                color: isDone
-                    ? Colors.white
-                    : isCurrent
-                    ? Colors.white
-                    .withOpacity(0.9)
-                    : Colors.white
-                    .withOpacity(0.25),
-                borderRadius:
-                BorderRadius.circular(2),
-              ),
+    return Row(
+      children: List.generate(5, (i) {
+        final isDone    = i < 4;
+        final isCurrent = i == 4;
+        return Expanded(
+          child: Container(
+            margin: EdgeInsets.only(right: i < 4 ? 4 : 0),
+            height: 4,
+            decoration: BoxDecoration(
+              color: (isCurrent || isDone)
+                  ? Colors.white
+                  : Colors.white.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(2),
             ),
-          );
-        }),
-      ),
+          ),
+        );
+      }),
     );
   }
 
@@ -507,146 +402,165 @@ class _Step5PhotosState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('📸',
-            style: TextStyle(fontSize: 36)),
+        const Text('📸', style: TextStyle(fontSize: 36)),
         const SizedBox(height: 10),
-        Text('Profile Photos',
-            style: AppTextStyles.h3),
+        Text('Profile Photos', style: AppTextStyles.h3),
         const SizedBox(height: 6),
         Text(
-          'Profiles with photos get '
-              '10x more responses',
-          style: AppTextStyles.bodyMedium
-              .copyWith(color: AppColors.muted),
+          'Profiles with photos get 10× more responses',
+          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.muted),
         ),
       ],
     );
   }
 
-  // ── PHOTO GRID ────────────────────────────────────────
+  // ── PHOTO COUNT BAR ───────────────────────────────────
 
-  Widget _buildPhotoGrid() {
-    return Column(
-      children: [
-        // Main photo — full width
-        _buildMainSlot(),
-        const SizedBox(height: 10),
-        // 5 smaller photos — 3+2 grid
-        GridView.builder(
-          shrinkWrap: true,
-          physics:
-          const NeverScrollableScrollPhysics(),
-          gridDelegate:
-          const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 1,
+  Widget _buildPhotoCountBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(children: [
+        // Dot indicators
+        Row(
+          children: List.generate(_maxSlots, (i) {
+            final filled = i < _photoCount;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.only(right: 6),
+              width: filled ? 14 : 10,
+              height: 10,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(5),
+                color: filled ? AppColors.crimson : AppColors.border,
+              ),
+            );
+          }),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            '$_photoCount / $_maxSlots photos added',
+            style: AppTextStyles.labelSmall.copyWith(
+              color: _photoCount >= 3
+                  ? AppColors.success
+                  : _photoCount >= 1
+                  ? AppColors.crimson
+                  : AppColors.muted,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          itemCount: 5,
-          itemBuilder: (_, i) =>
-              _buildPhotoSlot(i + 1),
         ),
-      ],
+        // Quality hint
+        if (_photoCount >= 3)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.successSurface,
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.verified_rounded, size: 11, color: AppColors.success),
+                SizedBox(width: 4),
+                Text('Great profile!',
+                    style: TextStyle(fontSize: 10, color: AppColors.success,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+          )
+        else if (_photoCount == 0)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.crimsonSurface,
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: const Text('Min 1 required',
+                style: TextStyle(fontSize: 10, color: AppColors.crimson,
+                    fontWeight: FontWeight.w600)),
+          ),
+      ]),
     );
   }
+
+  // ── MAIN SLOT (large) ─────────────────────────────────
 
   Widget _buildMainSlot() {
     final slot = _slots[0];
     return GestureDetector(
       onTap: () => _onSlotTap(0),
       child: AnimatedContainer(
-        duration:
-        const Duration(milliseconds: 200),
-        height: 200,
+        duration: const Duration(milliseconds: 200),
+        height: 220,
         decoration: BoxDecoration(
-          color: slot.hasPhoto
-              ? AppColors.ivoryDark
-              : AppColors.white,
-          borderRadius:
-          BorderRadius.circular(16),
+          color: slot.hasPhoto ? AppColors.ivoryDark : AppColors.white,
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: slot.hasPhoto
-                ? AppColors.gold
-                : AppColors.border,
+            color: slot.hasPhoto ? AppColors.gold : AppColors.crimson.withOpacity(0.4),
             width: slot.hasPhoto ? 2 : 1.5,
           ),
+          boxShadow: slot.hasPhoto ? AppColors.goldShadow : AppColors.softShadow,
         ),
         child: ClipRRect(
-          borderRadius:
-          BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(15),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Photo or placeholder
+              // Content
               if (slot.isUploading)
                 const _UploadingPlaceholder()
               else if (slot.hasPhoto)
-                _PhotoPreview(url: slot.url!)
+                _MockPhotoPreview(index: 0)
               else
                 _MainPhotoPlaceholder(),
 
-              // Main badge
+              // ⭐ Main badge
               if (slot.hasPhoto)
                 Positioned(
                   top: 10,
                   left: 10,
                   child: Container(
-                    padding:
-                    const EdgeInsets
-                        .symmetric(
-                        horizontal: 10,
-                        vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      gradient:
-                      AppColors.goldGradient,
-                      borderRadius:
-                      BorderRadius.circular(
-                          100),
+                      color: AppColors.gold,
+                      borderRadius: BorderRadius.circular(100),
+                      boxShadow: AppColors.goldShadow,
                     ),
                     child: const Row(
-                      mainAxisSize:
-                      MainAxisSize.min,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.star_rounded,
-                          size: 11,
-                          color: Colors.white,
-                        ),
+                        Icon(Icons.star_rounded, size: 12, color: Colors.white),
                         SizedBox(width: 4),
-                        Text(
-                          'Main Photo',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight:
-                            FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
+                        Text('Main Photo',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            )),
                       ],
                     ),
                   ),
                 ),
 
-              // Edit overlay on existing photo
+              // Edit overlay
               if (slot.hasPhoto)
                 Positioned(
                   bottom: 10,
                   right: 10,
                   child: Container(
-                    width: 32,
-                    height: 32,
+                    width: 32, height: 32,
                     decoration: BoxDecoration(
-                      color: AppColors.ink
-                          .withOpacity(0.6),
+                      color: Colors.black.withOpacity(0.55),
                       shape: BoxShape.circle,
                     ),
                     child: const Center(
-                      child: Icon(
-                        Icons.edit_rounded,
-                        size: 15,
-                        color: Colors.white,
-                      ),
+                      child: Icon(Icons.edit_rounded, size: 15, color: Colors.white),
                     ),
                   ),
                 ),
@@ -657,66 +571,88 @@ class _Step5PhotosState
     );
   }
 
-  Widget _buildPhotoSlot(int index) {
+  // ── SECONDARY GRID (5 slots) ──────────────────────────
+
+  Widget _buildSecondaryGrid() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 1,
+      ),
+      itemCount: 5, // slots 1-5
+      itemBuilder: (_, i) => _buildSecondarySlot(i + 1),
+    );
+  }
+
+  Widget _buildSecondarySlot(int index) {
     final slot = _slots[index];
     return GestureDetector(
       onTap: () => _onSlotTap(index),
       child: AnimatedContainer(
-        duration:
-        const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          color: slot.hasPhoto
-              ? AppColors.ivoryDark
-              : AppColors.white,
-          borderRadius:
-          BorderRadius.circular(12),
+          color: slot.hasPhoto ? AppColors.ivoryDark : AppColors.white,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: slot.hasPhoto
-                ? AppColors.border
-                : AppColors.border,
+            color: slot.hasPhoto ? AppColors.border : AppColors.border,
             width: 1.5,
           ),
         ),
         child: ClipRRect(
-          borderRadius:
-          BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(11),
           child: Stack(
             fit: StackFit.expand,
             children: [
+              // Content
               if (slot.isUploading)
                 const _UploadingPlaceholder()
               else if (slot.hasPhoto)
-                _PhotoPreview(url: slot.url!)
+                _MockPhotoPreview(index: index)
               else
-                _SmallPhotoPlaceholder(
-                    index: index),
+                _SecondaryPhotoPlaceholder(number: index + 1),
 
               // Delete button
               if (slot.hasPhoto)
                 Positioned(
-                  top: 4,
-                  right: 4,
+                  top: 4, right: 4,
                   child: GestureDetector(
-                    onTap: () =>
-                        _deletePhoto(index),
+                    onTap: () => _deletePhoto(index),
                     child: Container(
-                      width: 22,
-                      height: 22,
+                      width: 22, height: 22,
                       decoration: BoxDecoration(
                         color: AppColors.error,
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 1.5,
-                        ),
+                        border: Border.all(color: Colors.white, width: 1.5),
                       ),
                       child: const Center(
-                        child: Icon(
-                          Icons.close_rounded,
-                          size: 12,
-                          color: Colors.white,
-                        ),
+                        child: Icon(Icons.close_rounded, size: 12, color: Colors.white),
                       ),
+                    ),
+                  ),
+                ),
+
+              // "Set as Main" hint on long press slot
+              if (slot.hasPhoto)
+                Positioned(
+                  bottom: 4, left: 4,
+                  child: GestureDetector(
+                    onTap: () => _setAsMain(index),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text('Set Main',
+                          style: TextStyle(
+                            fontSize: 8,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          )),
                     ),
                   ),
                 ),
@@ -727,115 +663,53 @@ class _Step5PhotosState
     );
   }
 
-  // ── PHOTO COUNT ───────────────────────────────────────
+  // ── GUIDELINES CARD ───────────────────────────────────
 
-  Widget _buildPhotoCount() {
-    return Row(
-      children: [
-        // Count bubbles
-        ...List.generate(6, (i) {
-          final filled = i < _photoCount;
-          return Container(
-            margin:
-            const EdgeInsets.only(right: 6),
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: filled
-                  ? AppColors.crimson
-                  : AppColors.border,
-            ),
-          );
-        }),
-        const SizedBox(width: 8),
-        Text(
-          '$_photoCount / 6 photos added',
-          style: AppTextStyles.labelSmall
-              .copyWith(
-            color: _photoCount >= 3
-                ? AppColors.success
-                : AppColors.muted,
-          ),
-        ),
-        if (_photoCount >= 3) ...[
-          const SizedBox(width: 6),
-          const Icon(
-            Icons.check_circle_rounded,
-            size: 14,
-            color: AppColors.success,
-          ),
-        ],
-      ],
-    );
-  }
-
-  // ── TIPS CARD ─────────────────────────────────────────
-
-  Widget _buildTipsCard() {
+  Widget _buildGuidelinesCard() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.goldSurface,
+        color: AppColors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.gold.withOpacity(0.3),
-        ),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Icon(
-              Icons.tips_and_updates_rounded,
-              size: 16,
-              color: AppColors.gold,
-            ),
+            const Icon(Icons.shield_outlined, size: 16, color: AppColors.crimson),
             const SizedBox(width: 8),
-            Text(
-              'Photo Tips for More Matches',
-              style: AppTextStyles.labelMedium
-                  .copyWith(
-                  color: AppColors.gold),
-            ),
+            Text('Photo Guidelines', style: AppTextStyles.labelLarge),
           ]),
           const SizedBox(height: 12),
-          ..._tips.map((tip) => Padding(
-            padding: const EdgeInsets.only(
-                bottom: 8),
+          ..._guidelines.map((g) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
             child: Row(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 20,
-                  height: 20,
-                  margin:
-                  const EdgeInsets.only(
-                      right: 10),
+                  width: 18, height: 18,
                   decoration: BoxDecoration(
-                    color: AppColors.gold
-                        .withOpacity(0.15),
+                    color: g.$1
+                        ? AppColors.successSurface
+                        : AppColors.errorSurface,
                     shape: BoxShape.circle,
                   ),
                   child: Center(
-                    child: Text(
-                      tip['emoji']!,
-                      style: const TextStyle(
-                          fontSize: 11),
+                    child: Icon(
+                      g.$1 ? Icons.check_rounded : Icons.close_rounded,
+                      size: 10,
+                      color: g.$1 ? AppColors.success : AppColors.error,
                     ),
                   ),
                 ),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    tip['text']!,
-                    style: AppTextStyles
-                        .bodySmall
-                        .copyWith(
-                        color: AppColors
-                            .inkSoft),
-                  ),
+                  child: Text(g.$2,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.inkSoft,
+                        height: 1.4,
+                      )),
                 ),
               ],
             ),
@@ -845,70 +719,36 @@ class _Step5PhotosState
     );
   }
 
-  static const List<Map<String, String>>
-  _tips = [
-    {
-      'emoji': '😊',
-      'text': 'Use a clear, smiling face photo '
-          'as your main photo',
-    },
-    {
-      'emoji': '☀️',
-      'text': 'Good lighting makes a big '
-          'difference — prefer natural light',
-    },
-    {
-      'emoji': '👔',
-      'text': 'Add a formal photo and casual '
-          'photo both',
-    },
-    {
-      'emoji': '🚫',
-      'text': 'Avoid sunglasses, group photos '
-          'or blurry images',
-    },
+  static const List<(bool, String)> _guidelines = [
+    (true,  'Clear face photo — you should be clearly visible'),
+    (true,  'Recent photo — taken in the last 2 years'),
+    (true,  'Good lighting and decent background'),
+    (true,  'Formal or casual — be yourself'),
+    (false, 'No group photos — solo photos only'),
+    (false, 'No sunglasses or face coverings'),
+    (false, 'No explicit or inappropriate content'),
   ];
 
-  // ── GUIDELINES CARD ───────────────────────────────────
+  // ── DEV NOTE ─────────────────────────────────────────
 
-  Widget _buildGuidelinesCard() {
+  Widget _buildDevNote() {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.infoSurface,
+        color: AppColors.goldSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.info.withOpacity(0.2),
-        ),
+        border: Border.all(color: AppColors.gold.withOpacity(0.3)),
       ),
-      child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            const Icon(
-              Icons.verified_user_outlined,
-              size: 15,
-              color: AppColors.info,
+          const Icon(Icons.code_rounded, size: 15, color: AppColors.gold),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Dev Mode: Tap any slot to add a mock photo. Real photo upload (Gallery/Camera) will be enabled in Phase 3.',
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.inkSoft),
             ),
-            const SizedBox(width: 8),
-            Text(
-              'Photo Guidelines',
-              style: AppTextStyles.labelMedium
-                  .copyWith(
-                  color: AppColors.info),
-            ),
-          ]),
-          const SizedBox(height: 10),
-          Text(
-            '• Photos are reviewed by our safety team\n'
-                '• Face must be clearly visible\n'
-                '• No inappropriate or offensive content\n'
-                '• Only real, recent photos of yourself',
-            style: AppTextStyles.bodySmall
-                .copyWith(
-                color: AppColors.inkSoft,
-                height: 1.7),
           ),
         ],
       ),
@@ -918,49 +758,24 @@ class _Step5PhotosState
   // ── BOTTOM BAR ────────────────────────────────────────
 
   Widget _buildBottomBar(bool isSaving) {
+    final bottomPad = MediaQuery.of(context).padding.bottom;
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        24, 12, 24,
-        MediaQuery.of(context).padding.bottom +
-            16,
-      ),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPad + 16),
+      decoration: BoxDecoration(
         color: AppColors.white,
-        border: Border(
-          top: BorderSide(
-              color: AppColors.border,
-              width: 1),
-        ),
-        boxShadow: AppColors.modalShadow,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Progress dots
-          Row(
-            mainAxisAlignment:
-            MainAxisAlignment.center,
-            children: List.generate(5, (i) {
-              final isDone = i < 4;
-              final isCurrent = i == 4;
-              return Container(
-                margin: EdgeInsets.only(
-                    right: i < 4 ? 8 : 0),
-                width: isCurrent ? 20 : 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: (isDone || isCurrent)
-                      ? AppColors.crimson
-                      : AppColors.border,
-                  borderRadius:
-                  BorderRadius.circular(4),
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 14),
-          // Complete button
-          GradientButton(
+          // Main CTA
+          PrimaryButton(
             label: isSaving
                 ? 'Setting up...'
                 : _photoCount >= 1
@@ -969,14 +784,13 @@ class _Step5PhotosState
             isLoading: isSaving,
             onPressed: isSaving ? null : _complete,
           ),
-          if (_photoCount == 0) ...[
+
+          // Skip note
+          if (_photoCount == 0 && !isSaving) ...[
             const SizedBox(height: 8),
             Text(
-              'You can add photos later '
-                  'from your profile',
-              style: AppTextStyles.bodySmall
-                  .copyWith(
-                  color: AppColors.muted),
+              'You can add photos later from your profile',
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.muted),
               textAlign: TextAlign.center,
             ),
           ],
@@ -987,300 +801,120 @@ class _Step5PhotosState
 }
 
 // ─────────────────────────────────────────────────────────
-// PRIVATE WIDGETS
+// PHOTO OPTIONS BOTTOM SHEET
 // ─────────────────────────────────────────────────────────
 
-class _MainPhotoPlaceholder extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.ivoryDark,
-      child: Column(
-        mainAxisAlignment:
-        MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.crimsonSurface,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.add_photo_alternate_outlined,
-                size: 28,
-                color: AppColors.crimson,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Add Main Photo',
-            style: AppTextStyles.labelMedium
-                .copyWith(
-                color: AppColors.crimson),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'This is your primary photo',
-            style: AppTextStyles.bodySmall,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SmallPhotoPlaceholder
-    extends StatelessWidget {
+class _PhotoOptionsSheet extends StatelessWidget {
   final int index;
-  const _SmallPhotoPlaceholder(
-      {required this.index});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.ivoryDark,
-      child: Column(
-        mainAxisAlignment:
-        MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.add_rounded,
-            size: 28,
-            color: AppColors.muted,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Photo ${index + 1}',
-            style: AppTextStyles.labelSmall
-                .copyWith(
-                color: AppColors.muted),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PhotoPreview extends StatelessWidget {
-  final String url;
-  const _PhotoPreview({required this.url});
-
-  @override
-  Widget build(BuildContext context) {
-    // Mock preview — shows emoji placeholder
-    // Phase 3: CachedNetworkImage
-    final index = url.contains('photo_')
-        ? int.tryParse(
-        url.split('photo_')[1].split('_')[0]) ??
-        0
-        : 0;
-    const emojis = ['👩', '👨', '👩‍💼', '👨‍💼', '👩‍🎓', '👨‍🎓'];
-    return Container(
-      color: AppColors.crimsonSurface,
-      child: Center(
-        child: Text(
-          emojis[index % emojis.length],
-          style: const TextStyle(fontSize: 48),
-        ),
-      ),
-    );
-  }
-}
-
-class _UploadingPlaceholder extends StatefulWidget {
-  const _UploadingPlaceholder();
-
-  @override
-  State<_UploadingPlaceholder> createState() =>
-      _UploadingPlaceholderState();
-}
-
-class _UploadingPlaceholderState
-    extends State<_UploadingPlaceholder>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration:
-      const Duration(milliseconds: 800),
-    )..repeat(reverse: true);
-    _anim = Tween<double>(
-        begin: 0.4, end: 0.9)
-        .animate(CurvedAnimation(
-        parent: _ctrl,
-        curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _anim,
-      builder: (_, __) => Container(
-        color: AppColors.ivoryDark
-            .withOpacity(_anim.value),
-        child: const Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              color: AppColors.crimson,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────
-// BOTTOM SHEETS
-// ─────────────────────────────────────────────────────────
-
-class _AddPhotoSheet extends StatelessWidget {
+  final bool hasPhoto;
+  final bool isMainSlot;
   final VoidCallback onGallery;
   final VoidCallback onCamera;
+  final VoidCallback? onSetMain;
+  final VoidCallback? onDelete;
 
-  const _AddPhotoSheet({
+  const _PhotoOptionsSheet({
+    required this.index,
+    required this.hasPhoto,
+    required this.isMainSlot,
     required this.onGallery,
     required this.onCamera,
+    this.onSetMain,
+    this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          24, 8, 24, 32),
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 8, 20, bottomPad + 20),
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _Handle(),
-          const SizedBox(height: 4),
-          Text('Add Photo',
-              style: AppTextStyles.h4),
-          const SizedBox(height: 20),
+          // Handle
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: AppColors.ivoryDark,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+
+          // Title
+          Row(children: [
+            Text(
+              hasPhoto ? 'Photo Options' : 'Add Photo',
+              style: AppTextStyles.h4,
+            ),
+            if (isMainSlot) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.goldSurface,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.star_rounded, size: 11, color: AppColors.gold),
+                    SizedBox(width: 4),
+                    Text('Main Photo',
+                        style: TextStyle(fontSize: 10, color: AppColors.gold,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ],
+          ]),
+          const SizedBox(height: 16),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 8),
+
+          // Options
           _SheetOption(
             icon: Icons.photo_library_outlined,
             label: 'Choose from Gallery',
+            subtitle: 'JPG, PNG • Max 5MB',
             onTap: onGallery,
           ),
           _SheetOption(
             icon: Icons.camera_alt_outlined,
             label: 'Take a Photo',
+            subtitle: 'Use camera',
             onTap: onCamera,
           ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: TextButton(
-              onPressed: () =>
-                  Navigator.pop(context),
-              child: Text('Cancel',
-                  style: AppTextStyles
-                      .labelMedium
-                      .copyWith(
-                      color:
-                      AppColors.muted)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
-class _PhotoOptionsSheet extends StatelessWidget {
-  final bool isMain;
-  final VoidCallback? onSetMain;
-  final VoidCallback onReplace;
-  final VoidCallback onDelete;
-
-  const _PhotoOptionsSheet({
-    required this.isMain,
-    this.onSetMain,
-    required this.onReplace,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          24, 8, 24, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _Handle(),
-          const SizedBox(height: 4),
-          Text('Photo Options',
-              style: AppTextStyles.h4),
-          const SizedBox(height: 20),
-          if (!isMain && onSetMain != null)
+          if (onSetMain != null) ...[
+            const Divider(height: 1, color: AppColors.border),
             _SheetOption(
-              icon: Icons.star_outline_rounded,
+              icon: Icons.star_rounded,
               label: 'Set as Main Photo',
+              subtitle: 'This will be your display photo',
+              iconColor: AppColors.gold,
               onTap: onSetMain!,
             ),
-          _SheetOption(
-            icon: Icons.swap_horiz_rounded,
-            label: 'Replace Photo',
-            onTap: onReplace,
-          ),
-          _SheetOption(
-            icon: Icons.delete_outline_rounded,
-            label: 'Delete Photo',
-            onTap: onDelete,
-            isDestructive: true,
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: TextButton(
-              onPressed: () =>
-                  Navigator.pop(context),
-              child: Text('Cancel',
-                  style: AppTextStyles
-                      .labelMedium
-                      .copyWith(
-                      color:
-                      AppColors.muted)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+          ],
 
-class _Handle extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 40,
-        height: 4,
-        margin:
-        const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: AppColors.ivoryDark,
-          borderRadius: BorderRadius.circular(2),
-        ),
+          if (onDelete != null) ...[
+            const Divider(height: 1, color: AppColors.border),
+            _SheetOption(
+              icon: Icons.delete_outline_rounded,
+              label: 'Remove Photo',
+              subtitle: 'This photo will be deleted',
+              iconColor: AppColors.error,
+              textColor: AppColors.error,
+              onTap: onDelete!,
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1289,57 +923,163 @@ class _Handle extends StatelessWidget {
 class _SheetOption extends StatelessWidget {
   final IconData icon;
   final String label;
+  final String? subtitle;
+  final Color iconColor;
+  final Color? textColor;
   final VoidCallback onTap;
-  final bool isDestructive;
 
   const _SheetOption({
     required this.icon,
     required this.label,
+    this.subtitle,
+    this.iconColor = AppColors.crimson,
+    this.textColor,
     required this.onTap,
-    this.isDestructive = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = isDestructive
-        ? AppColors.error
-        : AppColors.inkSoft;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-            vertical: 14),
-        decoration: const BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-                color: AppColors.border,
-                width: 0.5),
-          ),
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
         child: Row(children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 40, height: 40,
             decoration: BoxDecoration(
-              color: isDestructive
-                  ? AppColors.errorSurface
-                  : AppColors.ivoryDark,
-              borderRadius:
-              BorderRadius.circular(10),
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
-              child: Icon(icon,
-                  size: 18, color: color),
+              child: Icon(icon, size: 20, color: iconColor),
             ),
           ),
           const SizedBox(width: 14),
-          Text(label,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: color,
-              )),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: AppTextStyles.labelMedium.copyWith(
+                      color: textColor ?? AppColors.ink,
+                    )),
+                if (subtitle != null)
+                  Text(subtitle!,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.muted,
+                      )),
+              ],
+            ),
+          ),
+          Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.muted),
         ]),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// PLACEHOLDER WIDGETS
+// ─────────────────────────────────────────────────────────
+
+class _MainPhotoPlaceholder extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.ivoryDark,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 60, height: 60,
+            decoration: BoxDecoration(
+              color: AppColors.crimsonSurface,
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Icon(Icons.add_photo_alternate_outlined,
+                  size: 28, color: AppColors.crimson),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text('Add Main Photo',
+              style: AppTextStyles.labelMedium.copyWith(color: AppColors.crimson)),
+          const SizedBox(height: 4),
+          Text('Tap to upload your best photo',
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.muted)),
+        ],
+      ),
+    );
+  }
+}
+
+class _SecondaryPhotoPlaceholder extends StatelessWidget {
+  final int number;
+  const _SecondaryPhotoPlaceholder({required this.number});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.ivoryDark,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.add_rounded, size: 26, color: AppColors.muted),
+          const SizedBox(height: 4),
+          Text('Photo $number',
+              style: AppTextStyles.labelSmall.copyWith(color: AppColors.muted)),
+        ],
+      ),
+    );
+  }
+}
+
+// Mock photo preview — Phase 3 mein CachedNetworkImage hoga
+class _MockPhotoPreview extends StatelessWidget {
+  final int index;
+  const _MockPhotoPreview({required this.index});
+
+  static const _emojis = ['👩', '👩‍💼', '👩‍⚕️', '👩‍🔬', '👩‍💻', '👩‍🏫'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.crimsonSurface,
+      child: Center(
+        child: Text(
+          _emojis[index % _emojis.length],
+          style: TextStyle(fontSize: index == 0 ? 72 : 40),
+        ),
+      ),
+    );
+  }
+}
+
+class _UploadingPlaceholder extends StatelessWidget {
+  const _UploadingPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.ivoryDark,
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 28, height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: AppColors.crimson,
+            ),
+          ),
+          SizedBox(height: 10),
+          Text('Uploading...',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.muted,
+                fontWeight: FontWeight.w500,
+              )),
+        ],
       ),
     );
   }

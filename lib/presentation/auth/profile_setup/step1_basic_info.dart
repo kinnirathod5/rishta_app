@@ -16,9 +16,19 @@ import 'package:rishta_app/providers/profile_provider.dart';
 
 // ─────────────────────────────────────────────────────────
 // STEP 1 — BASIC INFO
-// Fields: Full Name, Gender, DOB, Height,
-//         Current City, Native City,
-//         Mother Tongue, Marital Status, About Me
+//
+// Fields (updated order):
+//   1. Full Name         ← required
+//   2. Gender            ← required
+//   3. Marital Status    ← required (moved up — key filter)
+//   4. Date of Birth     ← required
+//   5. Height            ← required
+//   6. Current City      ← required
+//   7. Native City       ← optional
+//   8. About Me          ← optional
+//
+// REMOVED from Step 1:
+//   - Mother Tongue  → now in Step 2 (Religion & Community)
 // ─────────────────────────────────────────────────────────
 
 class Step1BasicInfo extends ConsumerStatefulWidget {
@@ -38,14 +48,14 @@ class _Step1BasicInfoState
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
-  final _nameCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
+  final _nameCtrl      = TextEditingController();
+  final _cityCtrl      = TextEditingController();
   final _nativeCityCtrl = TextEditingController();
-  final _aboutCtrl = TextEditingController();
+  final _aboutCtrl     = TextEditingController();
 
   // Focus nodes
-  final _nameFocus = FocusNode();
-  final _cityFocus = FocusNode();
+  final _nameFocus  = FocusNode();
+  final _cityFocus  = FocusNode();
   final _aboutFocus = FocusNode();
 
   // Values
@@ -53,8 +63,7 @@ class _Step1BasicInfoState
   int? _heightFeet;
   int? _heightInches;
   String? _gender;
-  String? _motherTongue;
-  String? _maritalStatus;
+  String? _maritalStatus;   // ← moved up
 
   // Errors
   String? _dobError;
@@ -62,8 +71,8 @@ class _Step1BasicInfoState
 
   // Entry animation
   late AnimationController _ctrl;
-  late Animation<double> _fade;
-  late Animation<Offset> _slide;
+  late Animation<double>  _fade;
+  late Animation<Offset>  _slide;
 
   @override
   void initState() {
@@ -77,58 +86,49 @@ class _Step1BasicInfoState
   void _setupAnimation() {
     _ctrl = AnimationController(
       vsync: this,
-      duration:
-      const Duration(milliseconds: 450),
+      duration: const Duration(milliseconds: 450),
     );
-    _fade = CurvedAnimation(
-        parent: _ctrl, curve: Curves.easeOut);
+    _fade  = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
     _slide = Tween<Offset>(
       begin: const Offset(0, 0.05),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-        parent: _ctrl, curve: Curves.easeOut));
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   // Gender auto-detect from profileFor
   String? _detectGender() {
-    final profileFor =
-    widget.extra?['profileFor'] as String?;
-    switch (profileFor) {
+    final profileFor = widget.extra?['profileFor'] as String?;
+    if (profileFor == null) return null;
+    switch (profileFor.toLowerCase()) {
+      case 'myself':
+      case 'son':
+        return 'Male';
       case 'daughter':
       case 'sister':
         return 'Female';
-      case 'son':
-      case 'brother':
-        return 'Male';
       default:
         return null;
     }
   }
 
   void _loadExisting() {
-    final profile =
-    ref.read(currentProfileProvider);
+    final profile = ref.read(currentProfileProvider);
     if (profile == null) return;
-
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       setState(() {
-        _nameCtrl.text = profile.fullName;
-        _cityCtrl.text = profile.currentCity;
-        _nativeCityCtrl.text =
-            profile.nativeCity ?? '';
-        _aboutCtrl.text = profile.about ?? '';
-        if (profile.heightInInches > 0) {
-          _heightFeet =
-              profile.heightInInches ~/ 12;
-          _heightInches =
-              profile.heightInInches % 12;
+        _nameCtrl.text    = profile.fullName;
+        _cityCtrl.text    = profile.currentCity;
+        _aboutCtrl.text   = profile.about;
+        // gender field ProfileModel mein nahi hai — profileFor se detect hota hai
+        _maritalStatus    = profile.maritalStatus.value;
+        if (profile.dateOfBirth != null) {
+          _dob = profile.dateOfBirth;
         }
-        _motherTongue =
-        profile.motherTongue.isNotEmpty
-            ? profile.motherTongue
-            : null;
+        if (profile.heightInInches > 0) {
+          _heightFeet   = profile.heightInInches ~/ 12;
+          _heightInches = profile.heightInInches % 12;
+        }
       });
     });
   }
@@ -149,218 +149,197 @@ class _Step1BasicInfoState
   // ── VALIDATION ────────────────────────────────────────
 
   bool _validate() {
-    final formValid =
-        _formKey.currentState?.validate() ??
-            false;
+    bool ok = _formKey.currentState!.validate();
 
-    final dobErr = Validators.dateOfBirth(_dob);
-    setState(() => _dobError = dobErr);
+    // DOB validation
+    if (_dob == null) {
+      setState(() => _dobError = 'Date of birth is required');
+      ok = false;
+    } else {
+      final age = DateTime.now().difference(_dob!).inDays ~/ 365;
+      if (age < 18) {
+        setState(() => _dobError = 'You must be at least 18 years old');
+        ok = false;
+      } else {
+        setState(() => _dobError = null);
+      }
+    }
 
-    if (_heightFeet == null) {
-      setState(() =>
-      _heightError =
-          AppStrings.heightRequired);
+    // Height validation
+    if (_heightFeet == null || _heightInches == null) {
+      setState(() => _heightError = 'Please select height');
+      ok = false;
     } else {
       setState(() => _heightError = null);
     }
 
-    return formValid &&
-        dobErr == null &&
-        _heightFeet != null;
+    return ok;
+  }
+
+  // ── SAVE ──────────────────────────────────────────────
+
+  Future<void> _saveAndNext() async {
+    FocusScope.of(context).unfocus();
+    if (!_validate()) return;
+
+    final heightInInches = (_heightFeet! * 12) + _heightInches!;
+    final data = {
+      'fullName'      : _nameCtrl.text.trim(),
+      'gender'        : _gender!,
+      'maritalStatus' : _maritalStatus ?? 'never_married',
+      'dateOfBirth'   : _dob!.toIso8601String(),
+      'heightInInches': heightInInches,
+      'currentCity'   : _cityCtrl.text.trim(),
+      'nativeCity'    : _nativeCityCtrl.text.trim(),
+      'about'         : _aboutCtrl.text.trim(),
+      'setupStep'     : 1,
+    };
+
+    final ok = await ref.read(myProfileProvider.notifier).updateProfile(data);
+    if (!mounted) return;
+    if (ok) {
+      context.go('/setup/step2');
+    } else {
+      final error = ref.read(myProfileProvider).error ?? 'Kuch galat hua. Dobara try karein.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 
   // ── DATE PICKER ───────────────────────────────────────
 
   Future<void> _pickDob() async {
-    final now = DateTime.now();
-    final initial = _dob ??
-        DateTime(
-            now.year - 25, now.month, now.day);
+    FocusScope.of(context).unfocus();
+    final now  = DateTime.now();
+    final max  = DateTime(now.year - 18, now.month, now.day);
+    final init = _dob ?? DateTime(now.year - 25, now.month, now.day);
 
     final picked = await showDatePicker(
       context: context,
-      initialDate: initial,
-      firstDate: DateTime(now.year - 80),
-      lastDate: DateTime(
-          now.year - 18, now.month, now.day),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
+      initialDate: init.isBefore(max) ? init : max,
+      firstDate: DateTime(1950),
+      lastDate: max,
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
           colorScheme: const ColorScheme.light(
             primary: AppColors.crimson,
             onPrimary: Colors.white,
-            surface: AppColors.white,
-          ),
-          textButtonTheme: TextButtonThemeData(
-            style: TextButton.styleFrom(
-                foregroundColor:
-                AppColors.crimson),
           ),
         ),
         child: child!,
       ),
     );
-
     if (picked != null) {
       setState(() {
         _dob = picked;
-        _dobError =
-            Validators.dateOfBirth(picked);
+        _dobError = null;
       });
     }
   }
 
-  // ── SUBMIT ────────────────────────────────────────────
+  // ── AGE HELPER ────────────────────────────────────────
 
-  Future<void> _next() async {
-    FocusScope.of(context).unfocus();
-    if (!_validate()) return;
-
-    final totalInches =
-        (_heightFeet! * 12) +
-            (_heightInches ?? 0);
-
-    final profileFor =
-        widget.extra?['profileFor']
-        as String? ??
-            ProfileFor.self.value;
-
-    final data = {
-      'profileFor': profileFor,
-      'fullName': _nameCtrl.text.trim(),
-      'dateOfBirth': _dob!.toIso8601String(),
-      'heightInInches': totalInches,
-      'currentCity': _cityCtrl.text.trim(),
-      'nativeCity':
-      _nativeCityCtrl.text.trim(),
-      'about': _aboutCtrl.text.trim(),
-      if (_gender != null) 'gender': _gender,
-      if (_motherTongue != null)
-        'motherTongue': _motherTongue,
-      if (_maritalStatus != null)
-        'maritalStatus': _maritalStatus,
-    };
-
-    final ok = await ref
-        .read(myProfileProvider.notifier)
-        .updateProfile(data);
-
-    if (!mounted) return;
-    if (ok) {
-      context.go('/setup/step2');
-    } else {
-      final error =
-          ref.read(myProfileProvider).error;
-      _showError(
-          error ?? 'Kuch galat hua. Dobara try karein.');
-    }
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg,
-            style: const TextStyle(
-                color: Colors.white)),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius:
-            BorderRadius.circular(10)),
-        duration:
-        const Duration(seconds: 3),
-      ),
-    );
+  String _formatDob(DateTime dob) {
+    final months = [
+      'Jan','Feb','Mar','Apr','May','Jun',
+      'Jul','Aug','Sep','Oct','Nov','Dec',
+    ];
+    final age = DateTime.now().difference(dob).inDays ~/ 365;
+    return '${dob.day} ${months[dob.month - 1]} ${dob.year}  •  $age yrs';
   }
 
   // ── BUILD ─────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final isSaving =
-        ref.watch(myProfileProvider).isSaving;
+    final isSaving = ref.watch(myProfileProvider.select((s) => s.isSaving));
 
-    return Scaffold(
-      backgroundColor: AppColors.ivory,
-      body: Stack(
-        children: [
-          FadeTransition(
-            opacity: _fade,
-            child: SlideTransition(
-              position: _slide,
-              child: Column(
-                children: [
-                  _buildHeader(),
-                  _buildProgressBar(),
-                  Expanded(
-                    child: Form(
-                      key: _formKey,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        backgroundColor: AppColors.ivory,
+        body: Stack(
+          children: [
+            Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: FadeTransition(
+                    opacity: _fade,
+                    child: SlideTransition(
+                      position: _slide,
                       child: SingleChildScrollView(
-                        padding:
-                        const EdgeInsets
-                            .fromLTRB(
-                            20, 20,
-                            20, 100),
-                        physics:
-                        const BouncingScrollPhysics(),
-                        child: Column(
-                          crossAxisAlignment:
-                          CrossAxisAlignment
-                              .start,
-                          children: [
-                            _buildStepTitle(),
-                            const SizedBox(
-                                height: 24),
-                            _buildNameField(),
-                            const SizedBox(
-                                height: 16),
-                            _buildGenderField(),
-                            const SizedBox(
-                                height: 20),
-                            _buildDobField(),
-                            const SizedBox(
-                                height: 16),
-                            _buildHeightField(),
-                            const SizedBox(
-                                height: 16),
-                            _buildCityField(),
-                            const SizedBox(
-                                height: 16),
-                            _buildNativeCityField(),
-                            const SizedBox(
-                                height: 16),
-                            _buildMotherTongueField(),
-                            const SizedBox(
-                                height: 16),
-                            _buildMaritalStatusField(),
-                            const SizedBox(
-                                height: 16),
-                            _buildAboutField(),
-                            const SizedBox(
-                                height: 6),
-                            _buildAboutCounter(),
-                          ],
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
+                        physics: const BouncingScrollPhysics(),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildStepTitle(),
+                              const SizedBox(height: 28),
+
+                              // 1. Full Name
+                              _buildNameField(),
+                              const SizedBox(height: 16),
+
+                              // 2. Gender
+                              _buildGenderField(),
+                              const SizedBox(height: 16),
+
+                              // 3. Marital Status ← MOVED UP (key filter)
+                              _buildMaritalStatusField(),
+                              const SizedBox(height: 20),
+
+                              // 4. Date of Birth
+                              _buildDobField(),
+                              const SizedBox(height: 16),
+
+                              // 5. Height
+                              _buildHeightField(),
+                              const SizedBox(height: 16),
+
+                              // 6. Current City
+                              _buildCityField(),
+                              const SizedBox(height: 16),
+
+                              // 7. Native City (optional)
+                              _buildNativeCityField(),
+                              const SizedBox(height: 16),
+
+                              // 8. About Me (optional)
+                              _buildAboutField(),
+                              const SizedBox(height: 6),
+                              _buildAboutCounter(),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ],
+                ),
+              ],
+            ),
+            // Bottom bar
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: _buildBottomBar(isSaving),
+            ),
+            if (isSaving)
+              const LoadingOverlay(
+                message: 'Saving...',
+                style: LoadingStyle.dots,
               ),
-            ),
-          ),
-          // Bottom bar
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: _buildBottomBar(isSaving),
-          ),
-          // Loading overlay
-          if (isSaving)
-            const LoadingOverlay(
-              message: 'Saving...',
-              style: LoadingStyle.dots,
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -368,117 +347,99 @@ class _Step1BasicInfoState
   // ── HEADER ────────────────────────────────────────────
 
   Widget _buildHeader() {
-    final topPad =
-        MediaQuery.of(context).padding.top;
+    final topPad = MediaQuery.of(context).padding.top;
     return Container(
-      color: AppColors.crimson,
-      padding: EdgeInsets.fromLTRB(
-          16, topPad + 10, 16, 12),
-      child: Row(children: [
-        // Back button
-        GestureDetector(
-          onTap: () =>
-              context.go('/profile-type'),
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color:
-              Colors.white.withOpacity(0.18),
-              borderRadius:
-              BorderRadius.circular(10),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.arrow_back_ios_new,
-                size: 16,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        // Step info
-        Expanded(
-          child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Step 1 of 5',
-                style: TextStyle(
-                  fontSize: 11,
-                  color:
-                  Colors.white.withOpacity(0.7),
-                  fontWeight: FontWeight.w500,
+      decoration: const BoxDecoration(
+        gradient: AppColors.crimsonGradient,
+      ),
+      padding: EdgeInsets.fromLTRB(16, topPad + 10, 16, 12),
+      child: Column(
+        children: [
+          Row(children: [
+            GestureDetector(
+              onTap: () => context.go('/profile-type'),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Icon(Icons.arrow_back_ios_new,
+                      size: 16, color: Colors.white),
                 ),
               ),
-              const Text(
-                'Basic Information',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Step 1 of 5',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.7),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Text(
+                    'Basic Information',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Skip
+            GestureDetector(
+              onTap: () => context.go('/setup/step2'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'Skip for now',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-        // Skip
-        GestureDetector(
-          onTap: () => context.go('/home'),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color:
-              Colors.white.withOpacity(0.15),
-              borderRadius:
-              BorderRadius.circular(100),
             ),
-            child: Text(
-              'Skip',
-              style: TextStyle(
-                fontSize: 11,
-                color:
-                Colors.white.withOpacity(0.9),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
-      ]),
+          ]),
+          const SizedBox(height: 12),
+          _buildProgressBar(),
+        ],
+      ),
     );
   }
 
-  // ── PROGRESS BAR ──────────────────────────────────────
-
   Widget _buildProgressBar() {
-    return Container(
-      color: AppColors.crimson,
-      padding: const EdgeInsets.fromLTRB(
-          16, 0, 16, 12),
-      child: Row(
-        children: List.generate(5, (i) {
-          final isDone = i < 0;
-          final isCurrent = i == 0;
-          return Expanded(
-            child: Container(
-              margin: EdgeInsets.only(
-                  right: i < 4 ? 4 : 0),
-              height: 4,
-              decoration: BoxDecoration(
-                color: isCurrent || isDone
-                    ? Colors.white
-                    : Colors.white
-                    .withOpacity(0.25),
-                borderRadius:
-                BorderRadius.circular(2),
-              ),
+    return Row(
+      children: List.generate(5, (i) {
+        final isDone    = i < 0;
+        final isCurrent = i == 0;
+        return Expanded(
+          child: Container(
+            margin: EdgeInsets.only(right: i < 4 ? 4 : 0),
+            height: 4,
+            decoration: BoxDecoration(
+              color: (isCurrent || isDone)
+                  ? Colors.white
+                  : Colors.white.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(2),
             ),
-          );
-        }),
-      ),
+          ),
+        );
+      }),
     );
   }
 
@@ -488,16 +449,13 @@ class _Step1BasicInfoState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('👤',
-            style: TextStyle(fontSize: 36)),
+        const Text('🌺', style: TextStyle(fontSize: 36)),
         const SizedBox(height: 10),
-        Text(AppStrings.basicInfo,
-            style: AppTextStyles.h3),
+        Text('Meri Jankari', style: AppTextStyles.h3),
         const SizedBox(height: 6),
         Text(
-          AppStrings.basicInfoSub,
-          style: AppTextStyles.bodyMedium
-              .copyWith(color: AppColors.muted),
+          'Apne baare mein sahi jankari bharein\ntaaki achha rishta mile',
+          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.muted),
         ),
       ],
     );
@@ -506,10 +464,18 @@ class _Step1BasicInfoState
   // ── FORM FIELDS ───────────────────────────────────────
 
   Widget _buildNameField() {
-    return AppTextField.name(
+    return AppTextField(
       label: AppStrings.fullName,
+      hint: 'e.g. Ramesh Rathod',
       controller: _nameCtrl,
       focusNode: _nameFocus,
+      required: true,
+      prefixIcon: Icons.person_outline_rounded,
+      textCapitalization: TextCapitalization.words,
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r"[a-zA-Z\s\']"))  ,
+        LengthLimitingTextInputFormatter(60),
+      ],
       validator: Validators.name,
     );
   }
@@ -522,12 +488,66 @@ class _Step1BasicInfoState
       required: true,
       items: const ['Male', 'Female', 'Other'],
       prefixIcon: Icons.wc_rounded,
-      validator: (v) => Validators.dropdown(
-          v,
-          errorMessage:
-          'Please select your gender'),
-      onChanged: (v) =>
-          setState(() => _gender = v),
+      validator: (v) => Validators.dropdown(v, errorMessage: 'Please select your gender'),
+      onChanged: (v) => setState(() => _gender = v),
+    );
+  }
+
+  // ✅ MOVED UP — was last, now 3rd field
+  Widget _buildMaritalStatusField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AppDropdownField<String>(
+          label: 'Marital Status',
+          hint: 'Select marital status',
+          value: _maritalStatus,
+          required: true,
+          items: const [
+            'never_married',
+            'divorced',
+            'widowed',
+            'separated',
+          ],
+          itemLabel: (v) {
+            switch (v) {
+              case 'never_married': return 'Never Married';
+              case 'divorced':      return 'Divorced';
+              case 'widowed':       return 'Widowed';
+              case 'separated':     return 'Separated';
+              default:              return v;
+            }
+          },
+          prefixIcon: Icons.favorite_outline_rounded,
+          validator: (v) => Validators.dropdown(v, errorMessage: 'Please select marital status'),
+          onChanged: (v) => setState(() => _maritalStatus = v),
+        ),
+        // Helpful note for divorced/widowed users
+        if (_maritalStatus == 'divorced' || _maritalStatus == 'widowed' || _maritalStatus == 'separated') ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.goldSurface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.gold),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Banjara samaj mein doosra vivah ke rishte bhi uplabdh hain. Apni details sahi bharein.',
+                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.inkSoft),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -535,274 +555,187 @@ class _Step1BasicInfoState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Label — same style as AppDropdownField
         Row(children: [
-          Text(
-            AppStrings.dateOfBirth,
-            style: AppTextStyles.inputLabel,
-          ),
-          Text(
-            ' *',
-            style: AppTextStyles.inputLabel
-                .copyWith(color: AppColors.crimson),
-          ),
+          Text(AppStrings.dateOfBirth, style: AppTextStyles.inputLabel),
+          Text(' *', style: AppTextStyles.inputLabel.copyWith(color: AppColors.crimson)),
         ]),
         const SizedBox(height: 7),
-
-        // Date picker — styled exactly like dropdown
         GestureDetector(
           onTap: _pickDob,
           child: AnimatedContainer(
-            duration:
-            const Duration(milliseconds: 200),
+            duration: const Duration(milliseconds: 200),
             decoration: BoxDecoration(
               color: AppColors.white,
-              borderRadius:
-              BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: _dobError != null
-                    ? AppColors.error
-                    : AppColors.border,
-                width: 1.5,
+                color: _dobError != null ? AppColors.error : AppColors.border,
+                width: _dobError != null ? 2 : 1.5,
               ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 14),
-              child: Row(children: [
-                Icon(
-                  Icons.calendar_today_outlined,
-                  size: 18,
-                  color: _dob != null
-                      ? AppColors.crimson
-                      : AppColors.muted,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _dob != null
-                        ? _formatDob(_dob!)
-                        : AppStrings.dobHint,
-                    style: _dob != null
-                        ? AppTextStyles.inputText
-                        : AppTextStyles.inputHint,
-                  ),
-                ),
-                if (_dob != null) ...[
-                  Container(
-                    padding:
-                    const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3),
-                    decoration: BoxDecoration(
-                      color:
-                      AppColors.crimsonSurface,
-                      borderRadius:
-                      BorderRadius.circular(
-                          100),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(9),
+              child: ColoredBox(
+                color: AppColors.white,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Row(children: [
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 18,
+                      color: _dob != null ? AppColors.crimson : AppColors.muted,
                     ),
-                    child: Text(
-                      '${_calculateAge(_dob!)} yrs',
-                      style: AppTextStyles
-                          .labelSmall
-                          .copyWith(
-                          color:
-                          AppColors.crimson),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _dob != null ? _formatDob(_dob!) : 'DD / MM / YYYY',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: _dob != null ? AppColors.ink : AppColors.muted,
+                          fontWeight: _dob != null ? FontWeight.w500 : FontWeight.w400,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 20,
-                  color: AppColors.muted,
+                    // Age badge
+                    if (_dob != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.crimsonSurface,
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Text(
+                          '${DateTime.now().difference(_dob!).inDays ~/ 365} yrs',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.crimson,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.keyboard_arrow_down_rounded,
+                        size: 20, color: AppColors.muted),
+                  ]),
                 ),
-              ]),
+              ),
             ),
           ),
         ),
-
-        // Error text
-        if (_dobError != null)
-          Padding(
-            padding: const EdgeInsets.only(
-                top: 6, left: 4),
-            child: Row(children: [
-              const Icon(
-                Icons.error_outline_rounded,
-                size: 13,
-                color: AppColors.error,
-              ),
-              const SizedBox(width: 5),
-              Text(
-                _dobError!,
-                style: AppTextStyles.inputError,
-              ),
-            ]),
-          ),
+        if (_dobError != null) ...[
+          const SizedBox(height: 6),
+          Row(children: [
+            const Icon(Icons.error_outline_rounded, size: 13, color: AppColors.error),
+            const SizedBox(width: 4),
+            Text(_dobError!, style: AppTextStyles.inputError),
+          ]),
+        ],
       ],
     );
   }
 
   Widget _buildHeightField() {
+    // 4'5" to 6'5" — feet: 4-6, inches: 0-11
+    final feetOptions   = List.generate(4, (i) => i + 4); // 4,5,6,7
+    final inchesOptions = List.generate(12, (i) => i);    // 0-11
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Label
         Row(children: [
-          Text(
-            AppStrings.height,
-            style: AppTextStyles.inputLabel,
-          ),
-          Text(' *',
-              style: AppTextStyles.inputLabel
-                  .copyWith(
-                  color: AppColors.crimson)),
+          Text('Height', style: AppTextStyles.inputLabel),
+          Text(' *', style: AppTextStyles.inputLabel.copyWith(color: AppColors.crimson)),
         ]),
         const SizedBox(height: 7),
-        // Two dropdowns
         Row(children: [
+          // Feet
           Expanded(
             child: AppDropdownField<int>(
-              hint: "Feet",
+              hint: 'Feet',
               value: _heightFeet,
-              items:
-              List.generate(4, (i) => i + 4),
+              items: feetOptions,
               itemLabel: (v) => "$v'  feet",
               onChanged: (v) => setState(() {
-                _heightFeet = v;
-                _heightError = null;
+                _heightFeet   = v;
+                _heightInches ??= 0;
+                _heightError  = null;
               }),
             ),
           ),
           const SizedBox(width: 12),
+          // Inches
           Expanded(
             child: AppDropdownField<int>(
               hint: 'Inches',
               value: _heightInches,
-              items: List.generate(12, (i) => i),
+              items: inchesOptions,
               itemLabel: (v) => '$v"  inches',
-              onChanged: (v) => setState(
-                      () => _heightInches = v),
+              enabled: _heightFeet != null,
+              onChanged: (v) => setState(() {
+                _heightInches = v;
+                _heightError  = null;
+              }),
             ),
           ),
         ]),
-        // Live cm display
-        if (_heightFeet != null) ...[
+        // Height in cm hint
+        if (_heightFeet != null && _heightInches != null) ...[
           const SizedBox(height: 6),
           Row(children: [
-            const Icon(
-              Icons.check_circle_outline_rounded,
-              size: 13,
-              color: AppColors.success,
-            ),
+            const Icon(Icons.check_circle_outline_rounded,
+                size: 13, color: AppColors.success),
             const SizedBox(width: 5),
             Text(
-              "$_heightFeet' ${_heightInches ?? 0}\"  "
-                  "(${((_heightFeet! * 12 + (_heightInches ?? 0)) * 2.54).round()} cm)",
-              style: AppTextStyles.bodySmall
-                  .copyWith(
-                  color: AppColors.success),
+              "$_heightFeet' $_heightInches\"  (${((_heightFeet! * 12 + _heightInches!) * 2.54).round()} cm)",
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.success),
             ),
           ]),
         ],
-        // Error
-        if (_heightError != null)
-          Padding(
-            padding: const EdgeInsets.only(
-                top: 6, left: 4),
-            child: Row(children: [
-              const Icon(
-                Icons.error_outline_rounded,
-                size: 13,
-                color: AppColors.error,
-              ),
-              const SizedBox(width: 5),
-              Text(_heightError!,
-                  style:
-                  AppTextStyles.inputError),
-            ]),
-          ),
+        if (_heightError != null) ...[
+          const SizedBox(height: 6),
+          Row(children: [
+            const Icon(Icons.error_outline_rounded, size: 13, color: AppColors.error),
+            const SizedBox(width: 4),
+            Text(_heightError!, style: AppTextStyles.inputError),
+          ]),
+        ],
       ],
     );
   }
 
   Widget _buildCityField() {
-    return AppTextField.city(
+    return AppTextField(
+      label: 'Current City',
+      hint: 'e.g. Hyderabad, Nagpur, Solapur',
       controller: _cityCtrl,
       focusNode: _cityFocus,
+      required: true,
+      prefixIcon: Icons.location_on_outlined,
+      textCapitalization: TextCapitalization.words,
       validator: Validators.city,
+      helperText: 'Banjara community is spread across Telangana, Maharashtra, Karnataka',
     );
   }
 
   Widget _buildNativeCityField() {
     return AppTextField(
-      label: 'Native City / Hometown',
-      hint: 'e.g. Lucknow, Patna, Jaipur',
+      label: 'Native Place / Tanda',
+      hint: 'e.g. Tanda name, village, district',
       controller: _nativeCityCtrl,
-      prefixIcon: Icons.location_city_outlined,
-      textCapitalization:
-      TextCapitalization.words,
-      helperText: 'Optional',
+      keyboardType: TextInputType.text,
+      prefixIcon: Icons.home_outlined,
+      textCapitalization: TextCapitalization.words,
+      helperText: 'Optional — aapka Tanda / mool sthan',
     );
   }
 
-  Widget _buildMotherTongueField() {
-    return AppDropdownField<String>(
-      label: AppStrings.motherTongue,
-      hint: AppStrings.motherTongueHint,
-      value: _motherTongue,
-      items: const [
-        'Hindi', 'Bengali', 'Telugu',
-        'Marathi', 'Tamil', 'Gujarati',
-        'Kannada', 'Malayalam', 'Punjabi',
-        'Odia', 'Urdu', 'English', 'Other',
-      ],
-      prefixIcon: Icons.language_outlined,
-      helperText: 'Optional',
-      onChanged: (v) =>
-          setState(() => _motherTongue = v),
-    );
-  }
-
-  Widget _buildMaritalStatusField() {
-    return AppDropdownField<String>(
-      label: 'Marital Status',
-      hint: 'Select marital status',
-      value: _maritalStatus,
-      items: const [
-        'never_married',
-        'divorced',
-        'widowed',
-        'separated',
-      ],
-      itemLabel: (v) {
-        switch (v) {
-          case 'never_married':
-            return 'Never Married';
-          case 'divorced':
-            return 'Divorced';
-          case 'widowed':
-            return 'Widowed';
-          case 'separated':
-            return 'Separated';
-          default:
-            return v;
-        }
-      },
-      prefixIcon: Icons.favorite_outline_rounded,
-      helperText: 'Optional',
-      onChanged: (v) =>
-          setState(() => _maritalStatus = v),
-    );
-  }
+  // ✅ Mother Tongue REMOVED from Step 1 — moved to Step 2
 
   Widget _buildAboutField() {
     return AppTextField.multiline(
-      label: AppStrings.aboutMe,
-      hint: AppStrings.aboutMeHint,
+      label: 'Apne Baare Mein (About)',
+      hint: 'Apne baare mein likhein — interests, values, Banjara culture se lagaav...',
       controller: _aboutCtrl,
-      maxLines: 5,
+      maxLines: 4,
       maxLength: 300,
       showCounter: false,
       validator: Validators.about,
@@ -810,116 +743,41 @@ class _Step1BasicInfoState
   }
 
   Widget _buildAboutCounter() {
-    return AnimatedBuilder(
-      animation: _aboutCtrl,
-      builder: (_, __) {
-        final count = _aboutCtrl.text.length;
-        final isNear = count > 260;
-        return Row(
-          mainAxisAlignment:
-          MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Optional — Good bio pe zyada reply',
-              style: AppTextStyles.bodySmall,
-            ),
-            Text(
-              '$count/300',
-              style: AppTextStyles.labelSmall
-                  .copyWith(
-                color: isNear
-                    ? AppColors.warning
-                    : AppColors.muted,
-                fontWeight: isNear
-                    ? FontWeight.w600
-                    : FontWeight.w400,
-              ),
-            ),
-          ],
-        );
-      },
+    final count = _aboutCtrl.text.length;
+    final isNear = count > 270;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Text(
+        '$count / 300',
+        style: AppTextStyles.bodySmall.copyWith(
+          color: isNear ? AppColors.error : AppColors.muted,
+          fontWeight: isNear ? FontWeight.w600 : FontWeight.w400,
+        ),
+      ),
     );
   }
 
   // ── BOTTOM BAR ────────────────────────────────────────
 
   Widget _buildBottomBar(bool isSaving) {
+    final bottomPad = MediaQuery.of(context).padding.bottom;
     return Container(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        12,
-        20,
-        MediaQuery.of(context).padding.bottom +
-            16,
-      ),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPad + 16),
+      decoration: BoxDecoration(
         color: AppColors.white,
-        border: Border(
-            top: BorderSide(
-                color: AppColors.border,
-                width: 1)),
-        boxShadow: AppColors.modalShadow,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
+          ),
+        ],
       ),
-      child: Row(children: [
-        // Progress dots
-        Expanded(
-          child: Row(
-            children: List.generate(5, (i) {
-              final isCurrent = i == 0;
-              return Container(
-                margin: const EdgeInsets.only(
-                    right: 6),
-                width: isCurrent ? 20 : 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: isCurrent
-                      ? AppColors.crimson
-                      : AppColors.border,
-                  borderRadius:
-                  BorderRadius.circular(4),
-                ),
-              );
-            }),
-          ),
-        ),
-        const SizedBox(width: 16),
-        // Next button
-        SizedBox(
-          width: 140,
-          height: 50,
-          child: PrimaryButton(
-            label: isSaving
-                ? 'Saving...'
-                : 'Next',
-            icon: isSaving
-                ? null
-                : Icons.arrow_forward_rounded,
-            isLoading: isSaving,
-            onPressed: isSaving ? null : _next,
-          ),
-        ),
-      ]),
+      child: PrimaryButton(
+        label: 'Next  →',
+        isLoading: isSaving,
+        onPressed: isSaving ? null : _saveAndNext,
+      ),
     );
-  }
-
-  // ── HELPERS ───────────────────────────────────────────
-
-  String _formatDob(DateTime dob) {
-    final d =
-    dob.day.toString().padLeft(2, '0');
-    final m =
-    dob.month.toString().padLeft(2, '0');
-    return '$d / $m / ${dob.year}';
-  }
-
-  int _calculateAge(DateTime dob) {
-    final now = DateTime.now();
-    int age = now.year - dob.year;
-    if (now.month < dob.month ||
-        (now.month == dob.month &&
-            now.day < dob.day)) {
-      age--;
-    }
-    return age;
   }
 }
